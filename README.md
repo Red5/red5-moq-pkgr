@@ -1,8 +1,9 @@
 # MoQ CMAF Packaging Library
 
-A pure Java 21 library for serialization and deserialization of media content for MoQ (Media over QUIC) Transport, supporting both:
+A pure Java 21 library for serialization and deserialization of media content for MoQ (Media over QUIC) Transport, supporting three formats:
 - **CMAF** (Common Media Application Format) packaging according to the [MoQ CMAF Packaging specification](https://github.com/wilaw/moq-cmaf-packaging/blob/main/draft-wilaw-moq-cmafpackaging.md)
 - **LOC** (Low Overhead Media Container) format according to [draft-ietf-moq-loc](https://datatracker.ietf.org/doc/html/draft-mzanaty-moq-loc-05)
+- **MoqMI** (MoQ Media Interop) format according to [draft-cenzano-moq-media-interop](https://datatracker.ietf.org/doc/html/draft-cenzano-moq-media-interop-03)
 
 ## Features
 
@@ -24,10 +25,19 @@ A pure Java 21 library for serialization and deserialization of media content fo
 - **End-to-End Encryption Ready**: Metadata designed for relay operation with encrypted payloads
 - **WebCodecs Compatible**: Direct mapping to EncodedAudioChunk and EncodedVideoChunk
 
+### MoqMI Support
+
+- **Media Interoperability**: Standard header extensions for cross-implementation compatibility
+- **Multiple Codecs**: H.264/AVC, Opus, AAC-LC, UTF-8 text
+- **Dynamic Updates**: Support for changing encoding parameters mid-stream
+- **Timestamp Management**: Numerator/timebase pairs for precise timing
+- **Track Naming**: Standard video0, audio0 naming convention
+- **Group Mapping**: IDR-based grouping for video, per-object for audio
+
 ### Common
 
-- **MoQ Transport Ready**: Both formats designed for use with MoQ Transport protocol
-- **Comprehensive Testing**: Full test coverage for both CMAF and LOC implementations
+- **MoQ Transport Ready**: All formats designed for use with MoQ Transport protocol
+- **Comprehensive Testing**: Full test coverage for CMAF, LOC, and MoqMI implementations
 
 ## Requirements
 
@@ -44,7 +54,7 @@ Tests are included in the build process, to skip tests use `-DskipTests` flag.
 mvn clean package
 ```
 
-All 89 tests should pass with 100% success rate.
+All 101 tests should pass with 100% success rate.
 
 ## Quick Start
 
@@ -176,6 +186,88 @@ if (obj.isIndependentFrame()) {
 long captureTime = obj.getCaptureTimestamp().getCaptureTimestampMicros();
 ```
 
+### Creating a MoqMI Object (H.264 Video)
+
+```java
+import org.red5.io.moq.moqmi.model.MoqMIObject;
+import org.red5.io.moq.moqmi.serialize.MoqMISerializer;
+
+// Create H.264 video data (AVCC format)
+byte[] h264Data = new byte[8192];
+long seqId = 0;
+long pts = 0;
+long dts = 0;
+long timebase = 30; // 30 fps
+
+// Create MoqMI object with H.264 metadata
+MoqMIObject obj = MoqMISerializer.createH264Object(h264Data, seqId, pts, dts, timebase);
+obj.setGroupId(0);
+obj.setObjectId(0);
+
+// For IDR frames, add extradata (AVCDecoderConfigurationRecord)
+byte[] extradata = new byte[]{0x01, 0x42, (byte) 0xC0, 0x1E};
+MoqMIObject idrObj = MoqMISerializer.createH264ObjectWithExtradata(
+    h264Data, seqId, pts, dts, timebase, extradata);
+
+// Serialize for MoQ Transport
+MoqMISerializer serializer = new MoqMISerializer();
+byte[] headerExtensions = serializer.serializeHeaderExtensions(obj);
+byte[] payload = serializer.getPayload(obj);
+```
+
+### Creating a MoqMI Object (Opus Audio)
+
+```java
+import org.red5.io.moq.moqmi.serialize.MoqMISerializer;
+
+// Create Opus audio data
+byte[] opusData = new byte[480];
+long seqId = 5;
+long pts = 150;
+long timebase = 48000; // 48 kHz
+long sampleFreq = 48000;
+long numChannels = 2; // Stereo
+
+// Create MoqMI object with Opus metadata
+MoqMIObject obj = MoqMISerializer.createOpusObject(
+    opusData, seqId, pts, timebase, sampleFreq, numChannels);
+obj.setGroupId(5);
+obj.setObjectId(0);
+
+// Serialize
+MoqMISerializer serializer = new MoqMISerializer();
+byte[] serialized = serializer.serialize(obj);
+```
+
+### Deserializing a MoqMI Object
+
+```java
+import org.red5.io.moq.moqmi.deserialize.MoqMIDeserializer;
+import org.red5.io.moq.moqmi.model.*;
+
+// Receive from MoQ Transport (header extensions and payload separated)
+byte[] headerExtensions = ...;
+byte[] payload = ...;
+
+// Deserialize
+MoqMIDeserializer deserializer = new MoqMIDeserializer();
+MoqMIObject obj = deserializer.deserialize(headerExtensions, payload);
+
+// Access metadata
+MoqMIObject.MediaType mediaType = obj.getMediaType();
+if (mediaType == MoqMIObject.MediaType.VIDEO_H264_AVCC) {
+    H264MetadataExtension metadata = obj.getHeaderExtension(H264MetadataExtension.class);
+    long pts = metadata.getPtsTimestamp();
+    long timebase = metadata.getTimebase();
+
+    // Check for extradata (present on IDR frames)
+    H264ExtradataExtension extradata = obj.getHeaderExtension(H264ExtradataExtension.class);
+    if (extradata != null) {
+        byte[] decoderConfig = extradata.getExtradata();
+    }
+}
+```
+
 ## Architecture
 
 ### Package Structure
@@ -200,18 +292,32 @@ org.red5.io.moq
 │   └── util/              # File I/O utilities
 │       ├── MediaFileReader.java
 │       └── MediaFileWriter.java
-└── loc/                # LOC format support
-    ├── model/              # LOC data structures
-    │   ├── LocObject.java
-    │   ├── LocHeaderExtension.java
-    │   ├── CaptureTimestampExtension.java
-    │   ├── VideoFrameMarkingExtension.java
-    │   ├── AudioLevelExtension.java
-    │   └── VideoConfigExtension.java
-    ├── serialize/          # LOC serialization
-    │   └── LocSerializer.java
-    └── deserialize/        # LOC deserialization
-        └── LocDeserializer.java
+├── loc/                # LOC format support
+│   ├── model/              # LOC data structures
+│   │   ├── LocObject.java
+│   │   ├── LocHeaderExtension.java
+│   │   ├── CaptureTimestampExtension.java
+│   │   ├── VideoFrameMarkingExtension.java
+│   │   ├── AudioLevelExtension.java
+│   │   └── VideoConfigExtension.java
+│   ├── serialize/          # LOC serialization
+│   │   └── LocSerializer.java
+│   └── deserialize/        # LOC deserialization
+│       └── LocDeserializer.java
+└── moqmi/              # MoqMI format support
+    ├── model/              # MoqMI data structures
+    │   ├── MoqMIObject.java
+    │   ├── MoqMIHeaderExtension.java
+    │   ├── MediaTypeExtension.java
+    │   ├── H264MetadataExtension.java
+    │   ├── H264ExtradataExtension.java
+    │   ├── OpusDataExtension.java
+    │   ├── AacLcDataExtension.java
+    │   └── Utf8TextExtension.java
+    ├── serialize/          # MoqMI serialization
+    │   └── MoqMISerializer.java
+    └── deserialize/        # MoqMI deserialization
+        └── MoqMIDeserializer.java
 ```
 
 ## Specification Compliance
@@ -254,6 +360,10 @@ The library includes comprehensive unit tests:
 
 - `LocObjectTest`: LOC object serialization/deserialization, header extensions, and all metadata types
 
+**MoqMI Tests:**
+
+- `MoqMIObjectTest`: MoqMI object serialization/deserialization, all media types (H.264, Opus, AAC-LC, UTF-8), and header extensions
+
 Run all tests:
 
 ```bash
@@ -265,6 +375,7 @@ Run specific test suite:
 ```bash
 mvn test -Dtest=LocObjectTest
 mvn test -Dtest=CmafFragmentTest
+mvn test -Dtest=MoqMIObjectTest
 mvn test -Dtest=PerformanceTest
 ```
 
@@ -305,6 +416,7 @@ Based on the MOQtail project. Contributions welcome!
 
 - [MoQ CMAF Packaging Draft](https://github.com/wilaw/moq-cmaf-packaging/blob/main/draft-wilaw-moq-cmafpackaging.md)
 - [LOC - Low Overhead Media Container (draft-ietf-moq-loc)](https://datatracker.ietf.org/doc/html/draft-mzanaty-moq-loc-05)
+- [MoQ Media Interop (draft-cenzano-moq-media-interop)](https://datatracker.ietf.org/doc/html/draft-cenzano-moq-media-interop-03)
 - [ISO Base Media File Format (ISO/IEC 14496-12)](https://www.iso.org/standard/74428.html)
 - [CMAF (ISO/IEC 23000-19)](https://www.iso.org/standard/79106.html)
 - [MoQ Transport](https://datatracker.ietf.org/wg/moq/about/)

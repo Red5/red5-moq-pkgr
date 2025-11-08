@@ -27,6 +27,7 @@ replay_pid*
 .project
 .classpath
 .claude/
+CLAUDE.md
 
 # OS
 .DS_Store
