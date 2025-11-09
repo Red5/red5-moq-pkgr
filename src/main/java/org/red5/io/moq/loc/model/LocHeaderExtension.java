@@ -1,5 +1,7 @@
 package org.red5.io.moq.loc.model;
 
+import org.red5.io.moq.model.IHeaderExtension;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -14,7 +16,7 @@ import java.nio.ByteBuffer;
  * Reference: draft-ietf-moq-loc
  * https://datatracker.ietf.org/doc/html/draft-mzanaty-moq-loc-05
  */
-public abstract class LocHeaderExtension {
+public abstract class LocHeaderExtension implements IHeaderExtension {
 
     /**
      * Extension ID (varint).
@@ -121,6 +123,4 @@ public abstract class LocHeaderExtension {
         return baos.toByteArray();
     }
 
-    @Override
-    public abstract String toString();
 }

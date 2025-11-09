@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.red5</groupId>
     <artifactId>moq-cmaf</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.2</version>
     <packaging>jar</packaging>
     <name>MoQ CMAF Packaging</name>
     <description>Pure Java implementation of MoQ CMAF packaging library for serialization/deserialization of audio, video, and metadata content</description>

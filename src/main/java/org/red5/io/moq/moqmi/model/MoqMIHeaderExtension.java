@@ -1,5 +1,7 @@
 package org.red5.io.moq.moqmi.model;
 
+import org.red5.io.moq.model.IHeaderExtension;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,7 +19,7 @@ import java.nio.ByteBuffer;
  *
  * Reference: draft-cenzano-moq-media-interop-03
  */
-public abstract class MoqMIHeaderExtension {
+public abstract class MoqMIHeaderExtension implements IHeaderExtension {
 
     /**
      * Extension ID (varint).
@@ -122,6 +124,4 @@ public abstract class MoqMIHeaderExtension {
         return baos.toByteArray();
     }
 
-    @Override
-    public abstract String toString();
 }
