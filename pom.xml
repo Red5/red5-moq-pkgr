@@ -4,11 +4,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.red5</groupId>
-    <artifactId>moq-cmaf</artifactId>
-    <version>1.1.2</version>
+    <artifactId>red5-moq-pkgr</artifactId>
+    <version>1.2.0</version>
     <packaging>jar</packaging>
-    <name>MoQ CMAF Packaging</name>
-    <description>Pure Java implementation of MoQ CMAF packaging library for serialization/deserialization of audio, video, and metadata content</description>
+    <name>MoQ Packaging</name>
+    <description>Pure Java implementation for MoQ content packaging for serialization/deserialization of audio, video, and metadata content. Includes LOC, CMAF, and MOQMI.</description>
     <url>https://github.com/Red5/red5-server</url>
     <organization>
         <name>Red5</name>
@@ -23,9 +23,9 @@
         </license>
     </licenses>
     <scm>
-        <url>https://github.com/Red5/red5-moq-cmaf.git</url>
-        <connection>scm:git:git@github.com:Red5/red5-moq-cmaf.git</connection>
-        <developerConnection>scm:git:git@github.com:Red5/red5-moq-cmaf.git</developerConnection>
+        <url>https://github.com/Red5/red5-moq-pkgr.git</url>
+        <connection>scm:git:git@github.com:Red5/red5-moq-pkgr.git</connection>
+        <developerConnection>scm:git:git@github.com:Red5/red5-moq-pkgr.git</developerConnection>
     </scm>
     <developers>
         <developer>
