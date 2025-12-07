@@ -370,4 +370,181 @@ class SampleFlagsTest {
 
         assertEquals(originalFlags, sampleFlags.getFlags());
     }
+
+    // ========== SAP Type Tests for CARP Support ==========
+
+    @Test
+    @DisplayName("Test SAP Type 1 detection (closed GOP IDR)")
+    void testSapType1Detection() {
+        // SAP Type 1: sync sample, independent, not a leading sample
+        SampleFlags flags = SampleFlags.createSapType1Flags();
+
+        assertEquals(SampleFlags.SapType.TYPE_1, flags.getSapType());
+        assertEquals(1, flags.getSapTypeValue());
+        assertTrue(flags.isStreamAccessPoint());
+        assertTrue(flags.isSyncSample());
+        assertTrue(flags.isIndependent());
+        assertEquals(2, flags.getIsLeading()); // Not a leading sample
+    }
+
+    @Test
+    @DisplayName("Test SAP Type 2 detection (open GOP IDR)")
+    void testSapType2Detection() {
+        // SAP Type 2: sync sample, independent, leading sample without dependency
+        SampleFlags flags = SampleFlags.createSapType2Flags();
+
+        assertEquals(SampleFlags.SapType.TYPE_2, flags.getSapType());
+        assertEquals(2, flags.getSapTypeValue());
+        assertTrue(flags.isStreamAccessPoint());
+        assertTrue(flags.isSyncSample());
+        assertTrue(flags.isIndependent());
+        assertEquals(3, flags.getIsLeading()); // Leading, no dependency
+    }
+
+    @Test
+    @DisplayName("Test SAP Type 3 detection (CRA/GDR)")
+    void testSapType3Detection() {
+        // SAP Type 3: sync sample, independent, leading sample with dependency
+        SampleFlags flags = SampleFlags.createSapType3Flags();
+
+        assertEquals(SampleFlags.SapType.TYPE_3, flags.getSapType());
+        assertEquals(3, flags.getSapTypeValue());
+        assertTrue(flags.isStreamAccessPoint());
+        assertTrue(flags.isSyncSample());
+        assertTrue(flags.isIndependent());
+        assertEquals(1, flags.getIsLeading()); // Leading with dependency
+    }
+
+    @Test
+    @DisplayName("Test non-SAP (non-sync sample)")
+    void testNonSapNonSync() {
+        SampleFlags flags = SampleFlags.createNonSyncSampleFlags();
+
+        assertEquals(SampleFlags.SapType.NONE, flags.getSapType());
+        assertEquals(0, flags.getSapTypeValue());
+        assertFalse(flags.isStreamAccessPoint());
+        assertFalse(flags.isSyncSample());
+    }
+
+    @Test
+    @DisplayName("Test non-SAP (depends on other samples)")
+    void testNonSapDependsOnOthers() {
+        // Sync sample but depends on others - not a valid SAP
+        int flags = (1 << 24); // sampleDependsOn=1 (depends on others), isNonSync=0
+        SampleFlags sampleFlags = new SampleFlags(flags);
+
+        assertEquals(SampleFlags.SapType.NONE, sampleFlags.getSapType());
+        assertFalse(sampleFlags.isStreamAccessPoint());
+    }
+
+    @Test
+    @DisplayName("Test SAP type with unknown leading status defaults to Type 1")
+    void testSapTypeUnknownLeadingDefaultsToType1() {
+        // Sync sample, independent (sampleDependsOn=2), but isLeading=0 (unknown)
+        int flags = (0 << 26) | (2 << 24); // isLeading=0, sampleDependsOn=2
+        SampleFlags sampleFlags = new SampleFlags(flags);
+
+        // Should default to SAP Type 1 when independent but leading status unknown
+        assertEquals(SampleFlags.SapType.TYPE_1, sampleFlags.getSapType());
+        assertTrue(sampleFlags.isStreamAccessPoint());
+    }
+
+    @Test
+    @DisplayName("Test createForSapType factory method with int")
+    void testCreateForSapTypeInt() {
+        assertEquals(SampleFlags.SapType.TYPE_1, SampleFlags.createForSapType(1).getSapType());
+        assertEquals(SampleFlags.SapType.TYPE_2, SampleFlags.createForSapType(2).getSapType());
+        assertEquals(SampleFlags.SapType.TYPE_3, SampleFlags.createForSapType(3).getSapType());
+
+        // Invalid SAP types should return non-sync
+        assertFalse(SampleFlags.createForSapType(0).isSyncSample());
+        assertFalse(SampleFlags.createForSapType(4).isSyncSample());
+    }
+
+    @Test
+    @DisplayName("Test createForSapType factory method with enum")
+    void testCreateForSapTypeEnum() {
+        assertEquals(SampleFlags.SapType.TYPE_1,
+                SampleFlags.createForSapType(SampleFlags.SapType.TYPE_1).getSapType());
+        assertEquals(SampleFlags.SapType.TYPE_2,
+                SampleFlags.createForSapType(SampleFlags.SapType.TYPE_2).getSapType());
+        assertEquals(SampleFlags.SapType.TYPE_3,
+                SampleFlags.createForSapType(SampleFlags.SapType.TYPE_3).getSapType());
+    }
+
+    @Test
+    @DisplayName("Test SapType enum fromValue")
+    void testSapTypeEnumFromValue() {
+        assertEquals(SampleFlags.SapType.NONE, SampleFlags.SapType.fromValue(0));
+        assertEquals(SampleFlags.SapType.TYPE_1, SampleFlags.SapType.fromValue(1));
+        assertEquals(SampleFlags.SapType.TYPE_2, SampleFlags.SapType.fromValue(2));
+        assertEquals(SampleFlags.SapType.TYPE_3, SampleFlags.SapType.fromValue(3));
+        assertEquals(SampleFlags.SapType.NONE, SampleFlags.SapType.fromValue(99)); // Invalid
+    }
+
+    @Test
+    @DisplayName("Test CARP SAP timeline scenario - HEVC with CRA pictures")
+    void testCarpSapTimelineScenario() {
+        // Simulate the CARP spec example: 30fps HEVC with SAP-2 at group start, SAP-3 mid-group
+        // Group 0, Object 0: SAP Type 2 (IDR)
+        SampleFlags idrFlags = SampleFlags.createSapType2Flags();
+        assertEquals(2, idrFlags.getSapTypeValue());
+
+        // Group 0, Object 60: SAP Type 3 (CRA with RASL pictures)
+        SampleFlags craFlags = SampleFlags.createSapType3Flags();
+        assertEquals(3, craFlags.getSapTypeValue());
+
+        // Other objects: non-SAP
+        SampleFlags deltaFlags = SampleFlags.createNonSyncSampleFlags();
+        assertEquals(0, deltaFlags.getSapTypeValue());
+
+        // Verify CARP timeline format: [sapType, EPT]
+        // Per spec: [2, 0], [3, 2100], [2, 4000], [3, 6100]...
+        assertTrue(idrFlags.isStreamAccessPoint());
+        assertTrue(craFlags.isStreamAccessPoint());
+        assertFalse(deltaFlags.isStreamAccessPoint());
+    }
+
+    @Test
+    @DisplayName("Test SAP type round-trip through TrunBox")
+    void testSapTypeRoundTripTrunBox() throws IOException {
+        // Create trun with different SAP types
+        MoofBox.TrunBox trun = new MoofBox.TrunBox();
+        trun.setVersion(0);
+        trun.setTrunFlags(0x000401); // data_offset + sample_flags
+        trun.setSampleCount(4);
+        trun.setDataOffset(100);
+
+        // SAP Type 1 (closed GOP IDR)
+        MoofBox.TrunBox.Sample sap1 = new MoofBox.TrunBox.Sample();
+        sap1.setSampleFlags(SampleFlags.createSapType1Flags());
+
+        // SAP Type 2 (open GOP IDR)
+        MoofBox.TrunBox.Sample sap2 = new MoofBox.TrunBox.Sample();
+        sap2.setSampleFlags(SampleFlags.createSapType2Flags());
+
+        // SAP Type 3 (CRA)
+        MoofBox.TrunBox.Sample sap3 = new MoofBox.TrunBox.Sample();
+        sap3.setSampleFlags(SampleFlags.createSapType3Flags());
+
+        // Non-SAP
+        MoofBox.TrunBox.Sample nonSap = new MoofBox.TrunBox.Sample();
+        nonSap.setSampleFlags(SampleFlags.createNonSyncSampleFlags());
+
+        trun.addSample(sap1);
+        trun.addSample(sap2);
+        trun.addSample(sap3);
+        trun.addSample(nonSap);
+
+        // Serialize and deserialize
+        byte[] data = trun.serialize();
+        MoofBox.TrunBox deserialized = new MoofBox.TrunBox();
+        deserialized.deserialize(ByteBuffer.wrap(data));
+
+        // Verify SAP types preserved
+        assertEquals(1, deserialized.getSamples().get(0).getSampleFlags().getSapTypeValue());
+        assertEquals(2, deserialized.getSamples().get(1).getSampleFlags().getSapTypeValue());
+        assertEquals(3, deserialized.getSamples().get(2).getSampleFlags().getSapTypeValue());
+        assertEquals(0, deserialized.getSamples().get(3).getSampleFlags().getSapTypeValue());
+    }
 }
