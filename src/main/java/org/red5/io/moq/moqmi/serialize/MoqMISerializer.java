@@ -98,6 +98,24 @@ public class MoqMISerializer {
      */
     public static MoqMIObject createH264Object(byte[] payload, long seqId, long ptsTimestamp,
                                                 long dtsTimestamp, long timebase) {
+        // Default duration: ~33ms for 30fps in timebase units
+        long defaultDuration = timebase / 30;
+        return createH264Object(payload, seqId, ptsTimestamp, dtsTimestamp, timebase, defaultDuration);
+    }
+
+    /**
+     * Create a H264 video object with duration.
+     *
+     * @param payload the H264 video data in AVCC format
+     * @param seqId sequence ID
+     * @param ptsTimestamp PTS in timebase units
+     * @param dtsTimestamp DTS in timebase units
+     * @param timebase timebase denominator
+     * @param duration frame duration in timebase units
+     * @return a new MoQ-MI object
+     */
+    public static MoqMIObject createH264Object(byte[] payload, long seqId, long ptsTimestamp,
+                                                long dtsTimestamp, long timebase, long duration) {
         MoqMIObject obj = new MoqMIObject(MoqMIObject.MediaType.VIDEO_H264_AVCC, payload);
 
         // Add required media type extension
@@ -105,7 +123,7 @@ public class MoqMISerializer {
 
         // Add H264 metadata extension
         H264MetadataExtension metadata = new H264MetadataExtension(
-                seqId, ptsTimestamp, dtsTimestamp, timebase, 0, 0);
+                seqId, ptsTimestamp, dtsTimestamp, timebase, duration, 0);
         obj.addHeaderExtension(metadata);
 
         return obj;
@@ -146,6 +164,25 @@ public class MoqMISerializer {
      */
     public static MoqMIObject createOpusObject(byte[] payload, long seqId, long ptsTimestamp,
                                                 long timebase, long sampleFreq, long numChannels) {
+        // Default Opus frame duration: 20ms at timebase
+        long defaultDuration = timebase / 50;  // 1000ms / 50 = 20ms
+        return createOpusObject(payload, seqId, ptsTimestamp, timebase, sampleFreq, numChannels, defaultDuration);
+    }
+
+    /**
+     * Create an Opus audio object with duration.
+     *
+     * @param payload the Opus audio data
+     * @param seqId sequence ID
+     * @param ptsTimestamp PTS in timebase units
+     * @param timebase timebase denominator
+     * @param sampleFreq sample frequency
+     * @param numChannels number of channels
+     * @param duration frame duration in timebase units
+     * @return a new MoQ-MI object
+     */
+    public static MoqMIObject createOpusObject(byte[] payload, long seqId, long ptsTimestamp,
+                                                long timebase, long sampleFreq, long numChannels, long duration) {
         MoqMIObject obj = new MoqMIObject(MoqMIObject.MediaType.AUDIO_OPUS, payload);
 
         // Add required media type extension
@@ -153,7 +190,7 @@ public class MoqMISerializer {
 
         // Add Opus data extension
         OpusDataExtension opusData = new OpusDataExtension(
-                seqId, ptsTimestamp, timebase, sampleFreq, numChannels, 0, 0);
+                seqId, ptsTimestamp, timebase, sampleFreq, numChannels, duration, 0);
         obj.addHeaderExtension(opusData);
 
         return obj;
@@ -172,6 +209,25 @@ public class MoqMISerializer {
      */
     public static MoqMIObject createAacLcObject(byte[] payload, long seqId, long ptsTimestamp,
                                                  long timebase, long sampleFreq, long numChannels) {
+        // Default AAC frame duration: ~21ms (1024 samples at 48kHz)
+        long defaultDuration = timebase / 47;  // Approx 21.3ms
+        return createAacLcObject(payload, seqId, ptsTimestamp, timebase, sampleFreq, numChannels, defaultDuration);
+    }
+
+    /**
+     * Create an AAC-LC audio object with duration.
+     *
+     * @param payload the AAC-LC audio data
+     * @param seqId sequence ID
+     * @param ptsTimestamp PTS in timebase units
+     * @param timebase timebase denominator
+     * @param sampleFreq sample frequency
+     * @param numChannels number of channels
+     * @param duration frame duration in timebase units
+     * @return a new MoQ-MI object
+     */
+    public static MoqMIObject createAacLcObject(byte[] payload, long seqId, long ptsTimestamp,
+                                                 long timebase, long sampleFreq, long numChannels, long duration) {
         MoqMIObject obj = new MoqMIObject(MoqMIObject.MediaType.AUDIO_AAC_LC, payload);
 
         // Add required media type extension
@@ -179,7 +235,7 @@ public class MoqMISerializer {
 
         // Add AAC-LC data extension
         AacLcDataExtension aacData = new AacLcDataExtension(
-                seqId, ptsTimestamp, timebase, sampleFreq, numChannels, 0, 0);
+                seqId, ptsTimestamp, timebase, sampleFreq, numChannels, duration, 0);
         obj.addHeaderExtension(aacData);
 
         return obj;
