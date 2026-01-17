@@ -268,6 +268,64 @@ if (mediaType == MoqMIObject.MediaType.VIDEO_H264_AVCC) {
 }
 ```
 
+## WARP & CARP Catalogs and Timelines
+
+This library includes helpers for WARP catalogs, WARP timelines (CSV), and CARP SAP event timelines (JSON). WARP/CARP catalogs are JSON payloads carried on the `catalog` track, and timeline tracks use CSV as specified by the WARP draft.
+When guidance differs, IETF drafts in `docs/` are authoritative over non-IETF drafts.
+
+### WARP Catalog (JSON)
+
+```java
+import org.red5.io.moq.warp.catalog.WarpCatalog;
+import org.red5.io.moq.warp.catalog.WarpCatalogSerializer;
+import org.red5.io.moq.warp.catalog.WarpCatalogValidator;
+import org.red5.io.moq.warp.catalog.WarpTrack;
+
+WarpTrack video = new WarpTrack();
+video.setName("video0");
+video.setPackaging("loc");
+video.setIsLive(true);
+video.setMimeType("video/h264");
+
+WarpCatalog catalog = new WarpCatalog();
+catalog.setVersion(1);
+catalog.setTracks(List.of(video));
+
+WarpCatalogValidator.validateCatalog(catalog);
+String json = new WarpCatalogSerializer().toJson(catalog);
+```
+
+### WARP Timeline (CSV)
+
+```java
+import org.red5.io.moq.warp.timeline.WarpTimeline;
+import org.red5.io.moq.warp.timeline.WarpTimelineRecord;
+
+WarpTimeline timeline = new WarpTimeline();
+String csv = timeline.toCsv(List.of(
+    new WarpTimelineRecord(1000, 1L, 0L, 1700000000000L, "start")
+));
+```
+
+### CARP SAP Event Timeline (JSON)
+
+```java
+import org.red5.io.moq.carp.CarpCatalogValidator;
+import org.red5.io.moq.carp.timeline.CarpSapTimeline;
+import org.red5.io.moq.carp.timeline.CarpSapTimelineEntry;
+
+WarpTrack sapTimeline = new WarpTrack();
+sapTimeline.setName("sap-timeline");
+sapTimeline.setPackaging("eventtimeline");
+sapTimeline.setEventType(CarpCatalogValidator.SAP_EVENT_TYPE);
+sapTimeline.setIsLive(true);
+
+String json = new CarpSapTimeline().toJson(List.of(
+    new CarpSapTimelineEntry(0, 0, 2, 0),
+    new CarpSapTimelineEntry(0, 60, 3, 2100)
+));
+```
+
 ## Architecture
 
 ### Package Structure
