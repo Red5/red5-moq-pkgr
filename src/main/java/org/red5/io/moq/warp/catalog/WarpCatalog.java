@@ -3,12 +3,15 @@ package org.red5.io.moq.warp.catalog;
 import java.util.List;
 
 /**
- * WARP catalog root object per draft-ietf-moq-warp.
+ * WARP catalog root object per draft-ietf-moq-warp and draft-ietf-moq-msf.
  */
 public class WarpCatalog {
     private Integer version;
 
     private Boolean deltaUpdate;
+
+    /** MSF 5.1.7: Indicates a previously live broadcast is complete with no new content. */
+    private Boolean isComplete;
 
     private List<WarpTrack> addTracks;
 
@@ -34,6 +37,14 @@ public class WarpCatalog {
 
     public void setDeltaUpdate(Boolean deltaUpdate) {
         this.deltaUpdate = deltaUpdate;
+    }
+
+    public Boolean getIsComplete() {
+        return isComplete;
+    }
+
+    public void setIsComplete(Boolean isComplete) {
+        this.isComplete = isComplete;
     }
 
     public List<WarpTrack> getAddTracks() {

@@ -58,6 +58,9 @@ public class WarpTrack {
 
     private Boolean isLive;
 
+    /** MSF 5.1.16: Target latency in milliseconds for real-time playback. */
+    private Long targetLatency;
+
     private String type;
 
     private String eventType;
@@ -272,6 +275,14 @@ public class WarpTrack {
 
     public void setIsLive(Boolean isLive) {
         this.isLive = isLive;
+    }
+
+    public Long getTargetLatency() {
+        return targetLatency;
+    }
+
+    public void setTargetLatency(Long targetLatency) {
+        this.targetLatency = targetLatency;
     }
 
     public String getType() {

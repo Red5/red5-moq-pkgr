@@ -92,8 +92,8 @@ public class WarpCatalogValidator {
         if (requireIsLive && track.getIsLive() == null) {
             throw new IllegalArgumentException("Track isLive is required");
         }
-        if (Boolean.FALSE.equals(track.getIsLive()) && track.getTrackDuration() != null) {
-            throw new IllegalArgumentException("trackDuration must not be set when isLive is false");
+        if (Boolean.TRUE.equals(track.getIsLive()) && track.getTrackDuration() != null) {
+            throw new IllegalArgumentException("trackDuration must not be set when isLive is true");
         }
         if ("timeline".equals(track.getPackaging())) {
             if (!"timeline".equals(track.getType())) {
@@ -187,6 +187,9 @@ public class WarpCatalogValidator {
         }
         if (track.getIsLive() != null) {
             extraFields.put("isLive", track.getIsLive());
+        }
+        if (track.getTargetLatency() != null) {
+            extraFields.put("targetLatency", track.getTargetLatency());
         }
         if (track.getType() != null) {
             extraFields.put("type", track.getType());
