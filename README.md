@@ -1,6 +1,7 @@
 # MoQ Packaging Library
 
-A pure Java 21 library for serialization and deserialization of media content for MoQ (Media over QUIC) Transport, supporting three formats:
+A pure Java 21 library for serialization and deserialization of media content for MoQ (Media over QUIC) Transport, supporting multiple formats:
+- **MSF** (MOQT Streaming Format) catalog and timeline support according to [draft-ietf-moq-msf](https://datatracker.ietf.org/doc/draft-ietf-moq-msf/)
 - **CMAF** (Common Media Application Format) packaging according to the [MoQ CMAF Packaging specification](https://github.com/wilaw/moq-cmaf-packaging/blob/main/draft-wilaw-moq-cmafpackaging.md)
 - **LOC** (Low Overhead Media Container) format according to [draft-ietf-moq-loc](https://datatracker.ietf.org/doc/html/draft-mzanaty-moq-loc-05)
 - **MoqMI** (MoQ Media Interop) format according to [draft-cenzano-moq-media-interop](https://datatracker.ietf.org/doc/html/draft-cenzano-moq-media-interop-03)
@@ -34,10 +35,22 @@ A pure Java 21 library for serialization and deserialization of media content fo
 - **Track Naming**: Standard video0, audio0 naming convention
 - **Group Mapping**: IDR-based grouping for video, per-object for audio
 
+### MSF Support
+
+- **Catalog Builder**: Fluent builder API for creating MSF catalogs and tracks
+- **Live/VOD Content**: Support for both live streaming (targetLatency) and VOD (trackDuration)
+- **Media Timeline**: JSON array format with GZIP compression for seeking in live streams
+- **Event Timeline**: Application metadata with wallclock, location, or media PTS indexing
+- **Track Types**: Video, audio, caption, subtitle, sign language, media/event timeline
+- **Simulcast**: Alt group support for adaptive bitrate switching
+- **SVC Layers**: Temporal and spatial layer dependencies
+- **Delta Updates**: Add, remove, or clone tracks without full catalog resend
+- **Validation**: MSF-specific rules for latency consistency and track dependencies
+
 ### Common
 
 - **MoQ Transport Ready**: All formats designed for use with MoQ Transport protocol
-- **Comprehensive Testing**: Full test coverage for CMAF, LOC, and MoqMI implementations
+- **Comprehensive Testing**: Full test coverage for CMAF, LOC, MoqMI, and MSF implementations
 
 ## Requirements
 
@@ -54,7 +67,7 @@ Tests are included in the build process, to skip tests use `-DskipTests` flag.
 mvn clean package
 ```
 
-All 101 tests should pass with 100% success rate.
+All 336 tests should pass with 100% success rate.
 
 ## Quick Start
 
@@ -268,9 +281,408 @@ if (mediaType == MoqMIObject.MediaType.VIDEO_H264_AVCC) {
 }
 ```
 
-## WARP & CARP Catalogs and Timelines
+## MSF (MOQT Streaming Format) Catalogs and Timelines
 
-This library includes helpers for WARP catalogs, WARP timelines (CSV), and CARP SAP event timelines (JSON). WARP/CARP catalogs are JSON payloads carried on the `catalog` track, and timeline tracks use CSV as specified by the WARP draft.
+This library provides comprehensive support for MSF (MOQT Streaming Format) as defined in draft-ietf-moq-msf-00, which supersedes the WARP format. MSF catalogs are JSON payloads carried on the `catalog` track.
+
+### MSF Live Video/Audio Catalog
+
+```java
+import org.red5.io.moq.msf.catalog.MsfCatalog;
+import org.red5.io.moq.msf.catalog.MsfCatalogSerializer;
+import org.red5.io.moq.msf.catalog.MsfTrack;
+
+// Build a live streaming catalog with video and audio
+MsfCatalog catalog = MsfCatalog.builder()
+    .addTrack(MsfTrack.video("1080p-video")
+        .namespace("conference.example.com/stream")
+        .live()
+        .targetLatency(2000)    // 2 second latency target
+        .renderGroup(1)
+        .altGroup(1)
+        .codec("av01.0.08M.10.0.110.09")
+        .resolution(1920, 1080)
+        .framerate(30)
+        .bitrate(4000000)
+        .label("HD Video"))
+    .addTrack(MsfTrack.audio("stereo-audio")
+        .namespace("conference.example.com/stream")
+        .live()
+        .targetLatency(2000)
+        .renderGroup(1)
+        .codec("opus")
+        .sampleRate(48000)
+        .channelConfig("2")
+        .bitrate(128000)
+        .language("en")
+        .label("English Audio"))
+    .build();
+
+// Serialize to JSON
+MsfCatalogSerializer serializer = new MsfCatalogSerializer();
+String json = serializer.toJson(catalog);
+```
+
+**Output JSON:**
+```json
+{
+  "version": 1,
+  "generatedAt": 1746104606044,
+  "tracks": [
+    {
+      "name": "1080p-video",
+      "namespace": "conference.example.com/stream",
+      "packaging": "loc",
+      "role": "video",
+      "isLive": true,
+      "targetLatency": 2000,
+      "renderGroup": 1,
+      "altGroup": 1,
+      "codec": "av01.0.08M.10.0.110.09",
+      "framerate": 30,
+      "bitrate": 4000000,
+      "width": 1920,
+      "height": 1080,
+      "label": "HD Video"
+    },
+    {
+      "name": "stereo-audio",
+      "namespace": "conference.example.com/stream",
+      "packaging": "loc",
+      "role": "audio",
+      "isLive": true,
+      "targetLatency": 2000,
+      "renderGroup": 1,
+      "codec": "opus",
+      "samplerate": 48000,
+      "channelConfig": "2",
+      "bitrate": 128000,
+      "lang": "en",
+      "label": "English Audio"
+    }
+  ]
+}
+```
+
+### MSF VOD (Video on Demand) Catalog
+
+```java
+// VOD catalogs omit targetLatency and include trackDuration
+MsfCatalog vodCatalog = MsfCatalog.builder()
+    .addTrack(MsfTrack.video("movie")
+        .vod()
+        .trackDuration(7200000L)  // 2 hours in milliseconds
+        .codec("avc1.64001f")
+        .resolution(1920, 1080)
+        .framerate(24)
+        .bitrate(8000000))
+    .addTrack(MsfTrack.audio("movie-audio")
+        .vod()
+        .trackDuration(7200000L)
+        .codec("mp4a.40.2")
+        .sampleRate(48000)
+        .channelConfig("5.1")
+        .bitrate(384000)
+        .language("en"))
+    .build();
+```
+
+**Output JSON:**
+```json
+{
+  "version": 1,
+  "generatedAt": 1746104606044,
+  "tracks": [
+    {
+      "name": "movie",
+      "packaging": "loc",
+      "role": "video",
+      "isLive": false,
+      "trackDuration": 7200000,
+      "codec": "avc1.64001f",
+      "framerate": 24,
+      "bitrate": 8000000,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "name": "movie-audio",
+      "packaging": "loc",
+      "role": "audio",
+      "isLive": false,
+      "trackDuration": 7200000,
+      "codec": "mp4a.40.2",
+      "samplerate": 48000,
+      "channelConfig": "5.1",
+      "bitrate": 384000,
+      "lang": "en"
+    }
+  ]
+}
+```
+
+### MSF Media Timeline Track
+
+Media timeline tracks allow clients to seek within live streams by mapping media PTS to MoQ group/object locations and wallclock times.
+
+```java
+import org.red5.io.moq.msf.timeline.MsfMediaTimeline;
+import org.red5.io.moq.msf.timeline.MsfMediaTimelineRecord;
+
+// Create a media timeline track in the catalog
+MsfCatalog catalogWithTimeline = MsfCatalog.builder()
+    .addTrack(MsfTrack.video("video").live().targetLatency(2000))
+    .addTrack(MsfTrack.audio("audio").live().targetLatency(2000))
+    .addTrack(MsfTrack.mediaTimeline("history")
+        .live()
+        .dependsOn("video")
+        .dependsOn("audio"))
+    .build();
+
+// Create timeline records (JSON array format)
+MsfMediaTimeline timeline = new MsfMediaTimeline();
+List<MsfMediaTimelineRecord> records = List.of(
+    new MsfMediaTimelineRecord(0, 0, 0, 1746104606044L),      // PTS 0ms, group 0, obj 0
+    new MsfMediaTimelineRecord(1000, 1, 0, 1746104607044L),   // PTS 1000ms, group 1, obj 0
+    new MsfMediaTimelineRecord(2000, 2, 0, 1746104608044L),   // PTS 2000ms, group 2, obj 0
+    new MsfMediaTimelineRecord(3000, 3, 0, 1746104609044L)    // PTS 3000ms, group 3, obj 0
+);
+
+// Serialize to JSON
+String timelineJson = timeline.toJson(records);
+
+// Serialize with GZIP compression (recommended for large timelines)
+byte[] compressed = timeline.toGzipJson(records);
+```
+
+**Timeline JSON format (array of arrays):**
+```json
+[[0,[0,0],1746104606044],[1000,[1,0],1746104607044],[2000,[2,0],1746104608044],[3000,[3,0],1746104609044]]
+```
+
+Each record: `[mediaPtsMillis, [groupId, objectId], wallclockMillis]`
+
+### MSF Event Timeline Track
+
+Event timeline tracks carry application-specific metadata events synchronized to media playback.
+
+```java
+import com.google.gson.JsonObject;
+import org.red5.io.moq.msf.timeline.MsfEventTimeline;
+import org.red5.io.moq.msf.timeline.MsfEventTimelineEntry;
+
+// Create an event timeline track
+MsfCatalog catalogWithEvents = MsfCatalog.builder()
+    .addTrack(MsfTrack.video("video").live())
+    .addTrack(MsfTrack.eventTimeline("scores", "com.sports/live-scores/v1")
+        .live()
+        .dependsOn("video"))
+    .build();
+
+// Create event entries indexed by wallclock time
+JsonObject scoreUpdate = new JsonObject();
+scoreUpdate.addProperty("home", 2);
+scoreUpdate.addProperty("away", 1);
+scoreUpdate.addProperty("period", "2nd");
+
+MsfEventTimeline eventTimeline = new MsfEventTimeline();
+List<MsfEventTimelineEntry> events = List.of(
+    MsfEventTimelineEntry.withWallclock(1746104606044L, scoreUpdate),
+    MsfEventTimelineEntry.withMediaPts(45000L, createGoalEvent()),  // Event at 45s media time
+    MsfEventTimelineEntry.withLocation(10, 5, createReplayMarker()) // Event at group 10, object 5
+);
+
+String eventJson = eventTimeline.toJson(events);
+```
+
+**Event Timeline JSON format:**
+```json
+[
+  {"t":1746104606044,"data":{"home":2,"away":1,"period":"2nd"}},
+  {"m":45000,"data":{"event":"goal","player":"Smith","minute":45}},
+  {"l":[10,5],"data":{"type":"replay","duration":15000}}
+]
+```
+
+Index types:
+- `t` - Wallclock timestamp (milliseconds since epoch)
+- `m` - Media PTS (milliseconds)
+- `l` - MoQ location as `[groupId, objectId]`
+
+### MSF Simulcast (Alt Groups)
+
+Simulcast tracks share the same `altGroup` and `targetLatency` for adaptive bitrate switching.
+
+```java
+MsfCatalog simulcast = MsfCatalog.builder()
+    .addTrack(MsfTrack.video("hd")
+        .live()
+        .targetLatency(1500)
+        .renderGroup(1)
+        .altGroup(1)           // Same alt group
+        .codec("av01")
+        .resolution(1920, 1080)
+        .bitrate(5000000))
+    .addTrack(MsfTrack.video("sd")
+        .live()
+        .targetLatency(1500)   // Must match alt group members
+        .renderGroup(1)
+        .altGroup(1)           // Same alt group
+        .codec("av01")
+        .resolution(640, 480)
+        .bitrate(500000))
+    .addTrack(MsfTrack.audio("audio")
+        .live()
+        .targetLatency(1500)
+        .renderGroup(1)
+        .codec("opus"))
+    .build();
+```
+
+### MSF SVC Layered Tracks
+
+SVC (Scalable Video Coding) tracks use `temporalId`, `spatialId`, and `depends` to describe layer relationships.
+
+```java
+MsfCatalog svcCatalog = MsfCatalog.builder()
+    // Base layer: 480p @ 15fps
+    .addTrack(MsfTrack.video("480p15")
+        .live()
+        .renderGroup(1)
+        .temporalId(0)
+        .spatialId(0)
+        .codec("av01.0.01M.10.0.110.09")
+        .resolution(640, 480)
+        .framerate(15))
+    // Temporal enhancement: 480p @ 30fps (depends on base)
+    .addTrack(MsfTrack.video("480p30")
+        .live()
+        .renderGroup(1)
+        .temporalId(1)
+        .spatialId(0)
+        .codec("av01.0.04M.10.0.110.09")
+        .resolution(640, 480)
+        .framerate(30)
+        .dependsOn("480p15"))
+    // Spatial enhancement: 1080p @ 15fps (depends on base)
+    .addTrack(MsfTrack.video("1080p15")
+        .live()
+        .renderGroup(1)
+        .temporalId(0)
+        .spatialId(1)
+        .codec("av01.0.05M.10.0.110.09")
+        .resolution(1920, 1080)
+        .framerate(15)
+        .dependsOn("480p15"))
+    .addTrack(MsfTrack.audio("audio")
+        .live()
+        .renderGroup(1)
+        .codec("opus"))
+    .build();
+```
+
+### MSF Broadcast Termination
+
+Signal that a live broadcast has ended with `isComplete=true` and empty tracks.
+
+```java
+// Create termination catalog
+MsfCatalog termination = MsfCatalog.termination();
+
+// Produces:
+// {
+//   "version": 1,
+//   "generatedAt": 1746104606044,
+//   "isComplete": true,
+//   "tracks": []
+// }
+```
+
+### MSF Delta Updates
+
+Delta updates add, remove, or clone tracks without resending the full catalog.
+
+```java
+// Create a delta update to add a new track
+MsfCatalog delta = new MsfCatalog();
+delta.setDeltaUpdate(true);
+delta.setGeneratedAt(System.currentTimeMillis());
+
+WarpTrack newAudio = new WarpTrack();
+newAudio.setName("commentary");
+newAudio.setPackaging("loc");
+newAudio.setRole("audio");
+newAudio.setIsLive(true);
+newAudio.setTargetLatency(2000L);
+newAudio.setLang("es");
+newAudio.setLabel("Spanish Commentary");
+
+delta.setAddTracks(List.of(newAudio));
+
+String deltaJson = serializer.toJson(delta);
+```
+
+**Delta Update JSON:**
+```json
+{
+  "version": 1,
+  "deltaUpdate": true,
+  "generatedAt": 1746104606044,
+  "addTracks": [
+    {
+      "name": "commentary",
+      "packaging": "loc",
+      "role": "audio",
+      "isLive": true,
+      "targetLatency": 2000,
+      "lang": "es",
+      "label": "Spanish Commentary"
+    }
+  ]
+}
+```
+
+### MSF Caption and Subtitle Tracks
+
+```java
+MsfCatalog accessibleCatalog = MsfCatalog.builder()
+    .addTrack(MsfTrack.video("video").live().targetLatency(2000))
+    .addTrack(MsfTrack.audio("audio").live().targetLatency(2000))
+    .addTrack(MsfTrack.caption("cc-en")
+        .live()
+        .language("en")
+        .label("English Closed Captions"))
+    .addTrack(MsfTrack.subtitle("sub-es")
+        .live()
+        .language("es")
+        .label("Spanish Subtitles"))
+    .build();
+```
+
+### MSF Constants and Latency Thresholds
+
+```java
+import org.red5.io.moq.msf.catalog.MsfConstants;
+
+// MSF version
+int version = MsfConstants.VERSION;  // 1
+
+// Standard track name for catalog
+String catalogTrack = MsfConstants.CATALOG_TRACK_NAME;  // "catalog"
+
+// Latency thresholds (milliseconds)
+long realtimeMax = MsfConstants.Latency.REALTIME_MAX_MS;       // 500ms
+long interactiveMin = MsfConstants.Latency.INTERACTIVE_MIN_MS; // 500ms
+long interactiveMax = MsfConstants.Latency.INTERACTIVE_MAX_MS; // 2500ms
+long standardMin = MsfConstants.Latency.STANDARD_MIN_MS;       // 2500ms
+
+// Generate initial group ID (current timestamp)
+long groupId = MsfConstants.generateInitialGroupId();
+```
+
+## WARP & CARP Catalogs and Timelines (Legacy)
+
+This library also includes support for the legacy WARP and CARP formats. WARP/CARP catalogs are JSON payloads carried on the `catalog` track, and WARP timeline tracks use CSV format.
 When guidance differs, IETF drafts in `docs/` are authoritative over non-IETF drafts.
 
 ### WARP Catalog (JSON)
@@ -362,20 +774,34 @@ org.red5.io.moq
 │   │   └── LocSerializer.java
 │   └── deserialize/        # LOC deserialization
 │       └── LocDeserializer.java
-└── moqmi/              # MoqMI format support
-    ├── model/              # MoqMI data structures
-    │   ├── MoqMIObject.java
-    │   ├── MoqMIHeaderExtension.java
-    │   ├── MediaTypeExtension.java
-    │   ├── H264MetadataExtension.java
-    │   ├── H264ExtradataExtension.java
-    │   ├── OpusDataExtension.java
-    │   ├── AacLcDataExtension.java
-    │   └── Utf8TextExtension.java
-    ├── serialize/          # MoqMI serialization
-    │   └── MoqMISerializer.java
-    └── deserialize/        # MoqMI deserialization
-        └── MoqMIDeserializer.java
+├── moqmi/              # MoqMI format support
+│   ├── model/              # MoqMI data structures
+│   │   ├── MoqMIObject.java
+│   │   ├── MoqMIHeaderExtension.java
+│   │   ├── MediaTypeExtension.java
+│   │   ├── H264MetadataExtension.java
+│   │   ├── H264ExtradataExtension.java
+│   │   ├── OpusDataExtension.java
+│   │   ├── AacLcDataExtension.java
+│   │   └── Utf8TextExtension.java
+│   ├── serialize/          # MoqMI serialization
+│   │   └── MoqMISerializer.java
+│   └── deserialize/        # MoqMI deserialization
+│       └── MoqMIDeserializer.java
+└── msf/                # MSF (MOQT Streaming Format) support
+    ├── catalog/            # Catalog classes
+    │   ├── MsfCatalog.java         # Catalog with builder pattern
+    │   ├── MsfTrack.java           # Track with builder pattern
+    │   ├── MsfCatalogSerializer.java
+    │   ├── MsfCatalogValidator.java
+    │   ├── MsfConstants.java
+    │   ├── TrackRole.java          # Enum: video, audio, caption, etc.
+    │   └── PackagingType.java      # Enum: loc, mediatimeline, eventtimeline
+    └── timeline/           # Timeline classes
+        ├── MsfMediaTimeline.java       # JSON array format
+        ├── MsfMediaTimelineRecord.java
+        ├── MsfEventTimeline.java       # JSON object format
+        └── MsfEventTimelineEntry.java
 ```
 
 ## Specification Compliance
@@ -400,6 +826,23 @@ This library implements [draft-ietf-moq-loc](https://datatracker.ietf.org/doc/ht
 - **Extension Types**: Support for both varint values (even IDs) and byte array values (odd IDs)
 - **Relay-Friendly Metadata**: Metadata accessible without decrypting payloads
 
+### MSF (MOQT Streaming Format)
+
+This library implements [draft-ietf-moq-msf-00](https://datatracker.ietf.org/doc/draft-ietf-moq-msf/):
+
+- **Catalog Format**: JSON-based catalog with version, tracks, and metadata
+- **Track Types**: Video, audio, caption, subtitle, sign language, media timeline, event timeline
+- **Packaging Types**: LOC, mediatimeline, eventtimeline
+- **Live Streaming**: `isLive=true` with `targetLatency` for real-time playback control
+- **VOD Content**: `isLive=false` with `trackDuration` for on-demand content
+- **Media Timeline**: JSON array format `[[pts, [groupId, objectId], wallclock], ...]` with GZIP compression
+- **Event Timeline**: JSON object format with wallclock (`t`), location (`l`), or media PTS (`m`) indexing
+- **Broadcast Termination**: `isComplete=true` with empty tracks signals stream end
+- **Delta Updates**: Add, remove, or clone tracks without full catalog resend
+- **Simulcast**: Alt groups with matching `targetLatency` for ABR switching
+- **SVC Layers**: `temporalId`, `spatialId`, and `depends` for scalable video
+- **Validation**: MSF-specific rules (latency consistency, timeline dependencies, etc.)
+
 ## Testing
 
 The library includes comprehensive unit tests:
@@ -422,6 +865,17 @@ The library includes comprehensive unit tests:
 
 - `MoqMIObjectTest`: MoqMI object serialization/deserialization, all media types (H.264, Opus, AAC-LC, UTF-8), and header extensions
 
+**MSF Tests:**
+
+- `MsfBuilderTest`: Builder patterns for MsfCatalog and MsfTrack, serialization round-trips
+- `MsfSerializerTest`: JSON serialization/deserialization, delta updates, validation integration
+- `MsfTrackBuilderTest`: All track builder setters and factory methods (video, audio, timeline, caption)
+- `MsfTimelineTest`: Media and event timeline JSON serialization with GZIP compression
+- `MsfTimelineEdgeCasesTest`: Edge cases for empty lists, null data, large values, invalid JSON
+- `MsfValidationEdgeCasesTest`: Validation rules for render groups, alt groups, latency consistency
+- `MsfCatalogFieldsTest`: isComplete and targetLatency field handling
+- `MsfCatalogValidatorTest`: MSF-specific validation rules and error handling
+
 Run all tests:
 
 ```bash
@@ -434,6 +888,8 @@ Run specific test suite:
 mvn test -Dtest=LocObjectTest
 mvn test -Dtest=CmafFragmentTest
 mvn test -Dtest=MoqMIObjectTest
+mvn test -Dtest=MsfBuilderTest
+mvn test -Dtest=MsfSerializerTest
 mvn test -Dtest=PerformanceTest
 ```
 
@@ -472,6 +928,7 @@ Based on the MOQtail project. Contributions welcome!
 
 ### Specifications
 
+- [MSF - MOQT Streaming Format (draft-ietf-moq-msf)](https://datatracker.ietf.org/doc/draft-ietf-moq-msf/)
 - [MoQ CMAF Packaging Draft](https://github.com/wilaw/moq-cmaf-packaging/blob/main/draft-wilaw-moq-cmafpackaging.md)
 - [LOC - Low Overhead Media Container (draft-ietf-moq-loc)](https://datatracker.ietf.org/doc/html/draft-mzanaty-moq-loc-05)
 - [MoQ Media Interop (draft-cenzano-moq-media-interop)](https://datatracker.ietf.org/doc/html/draft-cenzano-moq-media-interop-03)
