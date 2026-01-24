@@ -174,6 +174,74 @@ LocSerializer serializer = new LocSerializer();
 byte[] serialized = serializer.serialize(obj);
 ```
 
+## fMP4 (Init Segment + Fragments) for HTTP Chunked Streaming
+
+This library includes lightweight builders for CMAF-style fMP4 output. The init segment is sent once, then each
+fragment is appended. This is suitable for browser streaming using Mediabunny's `ReadableStreamSource`.
+
+### Build an init segment
+
+```java
+import org.red5.io.moq.cmaf.util.Fmp4InitSegmentBuilder;
+
+byte[] avcC = /* full avcC box bytes (size + type + payload) */;
+byte[] esds = /* full esds box bytes (size + type + payload) */;
+
+byte[] initSegment = new Fmp4InitSegmentBuilder()
+    .addVideoTrack(new Fmp4InitSegmentBuilder.VideoTrackConfig(
+        1, 90000, "avc1", avcC, 1920, 1080))
+    .addAudioTrack(new Fmp4InitSegmentBuilder.AudioTrackConfig(
+        2, 48000, "mp4a", esds, 2, 48000, 16))
+    .build();
+```
+
+### Build a fragment
+
+```java
+import org.red5.io.moq.cmaf.model.SampleFlags;
+import org.red5.io.moq.cmaf.util.Fmp4FragmentBuilder;
+
+Fmp4FragmentBuilder builder = new Fmp4FragmentBuilder();
+
+Fmp4FragmentBuilder.FragmentConfig config = new Fmp4FragmentBuilder.FragmentConfig()
+    .setSequenceNumber(1)
+    .setTrackId(1)
+    .setBaseDecodeTime(0)
+    .setMediaData(mediaBytes);
+
+config.addSample(new Fmp4FragmentBuilder.SampleData(
+    sampleDuration, sampleSize, SampleFlags.createSyncSampleFlags()));
+
+byte[] fragmentBytes = builder.buildFragment(config).serialize();
+```
+
+### Browser playback with Mediabunny
+
+```ts
+import { Input, ReadableStreamSource, ALL_FORMATS } from 'mediabunny';
+
+const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+const source = new ReadableStreamSource(readable);
+const input = new Input({ source, formats: ALL_FORMATS });
+
+const writer = writable.getWriter();
+writer.write(initSegmentBytes);
+writer.write(fragmentBytes);
+// Continue writing fragments...
+```
+
+Note: `codecConfig` in the init segment must include the full codec box (`avcC`, `hvcC`, `av1C`, `esds`, `Opus`)
+with size and type bytes, not just the raw config payload.
+
+### Local HTTP chunked demo endpoint
+
+```bash
+java -cp target/red5-moq-pkgr-*.jar org.red5.io.moq.cmaf.util.HttpChunkedFmp4Server
+```
+
+This demo server streams placeholder data at `http://localhost:8080/stream`. Replace the codec configs and
+media payloads in `HttpChunkedFmp4Server` with real stream data for actual playback.
+
 ### Deserializing a LOC Object
 
 ```java
