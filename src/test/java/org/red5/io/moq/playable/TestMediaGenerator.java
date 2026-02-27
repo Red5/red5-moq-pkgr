@@ -163,7 +163,10 @@ public class TestMediaGenerator {
         probePb.redirectErrorStream(true);
         Process probeP = probePb.start();
         String probeOut = new String(probeP.getInputStream().readAllBytes());
-        probeP.waitFor();
+        int probeExit = probeP.waitFor();
+        if (probeExit != 0) {
+            throw new IOException("ffprobe packet extraction failed (exit " + probeExit + "): " + probeOut);
+        }
 
         // Extract raw h264 as annex-B elementary stream for NAL unit parsing
         Path rawVideo = outputDir.resolve("raw_video.h264");
@@ -175,8 +178,11 @@ public class TestMediaGenerator {
         );
         extractPb.redirectErrorStream(true);
         Process extractP = extractPb.start();
-        extractP.getInputStream().readAllBytes();
-        extractP.waitFor();
+        String extractLog = new String(extractP.getInputStream().readAllBytes());
+        int extractExit = extractP.waitFor();
+        if (extractExit != 0) {
+            throw new IOException("ffmpeg raw video extraction failed (exit " + extractExit + "): " + extractLog);
+        }
 
         byte[] h264Data = Files.readAllBytes(rawVideo);
         List<byte[]> nalUnits = parseAnnexBNalUnits(h264Data);
