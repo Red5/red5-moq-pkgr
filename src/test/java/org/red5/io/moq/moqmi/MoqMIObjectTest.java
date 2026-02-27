@@ -213,6 +213,168 @@ class MoqMIObjectTest {
     }
 
     @Test
+    void testH265VideoWithoutExtradata() throws Exception {
+        // Create H265 video object
+        byte[] videoPayload = new byte[]{0x00, 0x00, 0x00, 0x01, 0x26, 0x01}; // Mock HEVC IDR NALU
+        long seqId = 1;
+        long pts = 0;
+        long dts = 0;
+        long timebase = 30; // 30 fps
+
+        MoqMIObject obj = MoqMISerializer.createH265Object(videoPayload, seqId, pts, dts, timebase);
+        obj.setGroupId(1);
+        obj.setObjectId(1);
+
+        // Verify object structure
+        assertEquals(MoqMIObject.MediaType.VIDEO_H265_HVCC, obj.getMediaType());
+        assertEquals(2, obj.getHeaderExtensions().size()); // MediaType + H265Metadata
+
+        // Verify media type extension
+        MediaTypeExtension mediaTypeExt = obj.getHeaderExtension(MediaTypeExtension.class);
+        assertNotNull(mediaTypeExt);
+        assertEquals(MoqMIObject.MediaType.VIDEO_H265_HVCC, mediaTypeExt.getMediaType());
+
+        // Verify H265 metadata extension
+        H265MetadataExtension metadata = obj.getHeaderExtension(H265MetadataExtension.class);
+        assertNotNull(metadata);
+        assertEquals(seqId, metadata.getSeqId());
+        assertEquals(pts, metadata.getPtsTimestamp());
+        assertEquals(dts, metadata.getDtsTimestamp());
+        assertEquals(timebase, metadata.getTimebase());
+
+        // Serialize
+        MoqMISerializer serializer = new MoqMISerializer();
+        byte[] headerExtensions = serializer.serializeHeaderExtensions(obj);
+        byte[] payload = serializer.getPayload(obj);
+
+        assertNotNull(headerExtensions);
+        assertTrue(headerExtensions.length > 0);
+        assertArrayEquals(videoPayload, payload);
+
+        // Deserialize
+        MoqMIDeserializer deserializer = new MoqMIDeserializer();
+        MoqMIObject deserialized = deserializer.deserialize(headerExtensions, payload);
+
+        // Verify deserialized object
+        assertEquals(MoqMIObject.MediaType.VIDEO_H265_HVCC, deserialized.getMediaType());
+        assertArrayEquals(videoPayload, deserialized.getPayload());
+
+        MediaTypeExtension deserializedMediaType = deserialized.getHeaderExtension(MediaTypeExtension.class);
+        assertNotNull(deserializedMediaType);
+        assertEquals(MoqMIObject.MediaType.VIDEO_H265_HVCC, deserializedMediaType.getMediaType());
+
+        H265MetadataExtension deserializedMetadata = deserialized.getHeaderExtension(H265MetadataExtension.class);
+        assertNotNull(deserializedMetadata);
+        assertEquals(seqId, deserializedMetadata.getSeqId());
+        assertEquals(pts, deserializedMetadata.getPtsTimestamp());
+        assertEquals(dts, deserializedMetadata.getDtsTimestamp());
+        assertEquals(timebase, deserializedMetadata.getTimebase());
+    }
+
+    @Test
+    void testH265VideoWithExtradata() throws Exception {
+        // Create H265 IDR frame with extradata
+        byte[] videoPayload = new byte[]{0x00, 0x00, 0x00, 0x01, 0x26, 0x01}; // IDR NALU
+        // Mock HEVCDecoderConfigurationRecord
+        byte[] extradata = new byte[]{0x01, 0x01, 0x60, 0x00, 0x00, 0x00, (byte) 0xB0, 0x00, 0x00, 0x00, 0x00, 0x00};
+        long seqId = 0; // First frame
+        long pts = 0;
+        long dts = 0;
+        long timebase = 30;
+
+        MoqMIObject obj = MoqMISerializer.createH265ObjectWithExtradata(
+                videoPayload, seqId, pts, dts, timebase, extradata);
+        obj.setGroupId(0);
+        obj.setObjectId(0);
+
+        // Verify object structure
+        assertEquals(3, obj.getHeaderExtensions().size()); // MediaType + H265Metadata + H265Extradata
+
+        // Verify extradata extension
+        H265ExtradataExtension extradataExt = obj.getHeaderExtension(H265ExtradataExtension.class);
+        assertNotNull(extradataExt);
+        assertArrayEquals(extradata, extradataExt.getExtradata());
+
+        // Serialize
+        MoqMISerializer serializer = new MoqMISerializer();
+        byte[] headerExtensions = serializer.serializeHeaderExtensions(obj);
+        byte[] payload = serializer.getPayload(obj);
+
+        // Deserialize
+        MoqMIDeserializer deserializer = new MoqMIDeserializer();
+        MoqMIObject deserialized = deserializer.deserialize(headerExtensions, payload);
+
+        // Verify deserialized extradata
+        H265ExtradataExtension deserializedExtradata = deserialized.getHeaderExtension(H265ExtradataExtension.class);
+        assertNotNull(deserializedExtradata);
+        assertArrayEquals(extradata, deserializedExtradata.getExtradata());
+    }
+
+    @Test
+    void testH265WithTimestampAndDuration() throws Exception {
+        // Create H265 object with specific timestamps and duration
+        byte[] videoPayload = new byte[2048];
+        long seqId = 100;
+        long pts = 3000;
+        long dts = 3000;
+        long timebase = 90000; // Common for video (90 kHz)
+        long duration = 3000; // 1/30th second at 90kHz
+        long wallclock = System.currentTimeMillis();
+
+        MoqMIObject obj = new MoqMIObject(MoqMIObject.MediaType.VIDEO_H265_HVCC, videoPayload);
+        obj.addHeaderExtension(new MediaTypeExtension(MoqMIObject.MediaType.VIDEO_H265_HVCC));
+
+        H265MetadataExtension metadata = new H265MetadataExtension(
+                seqId, pts, dts, timebase, duration, wallclock);
+        obj.addHeaderExtension(metadata);
+
+        // Serialize and deserialize
+        MoqMISerializer serializer = new MoqMISerializer();
+        byte[] headerExtensions = serializer.serializeHeaderExtensions(obj);
+        byte[] payload = serializer.getPayload(obj);
+
+        MoqMIDeserializer deserializer = new MoqMIDeserializer();
+        MoqMIObject deserialized = deserializer.deserialize(headerExtensions, payload);
+
+        // Verify all timestamp fields
+        H265MetadataExtension deserializedMetadata = deserialized.getHeaderExtension(H265MetadataExtension.class);
+        assertNotNull(deserializedMetadata);
+        assertEquals(seqId, deserializedMetadata.getSeqId());
+        assertEquals(pts, deserializedMetadata.getPtsTimestamp());
+        assertEquals(dts, deserializedMetadata.getDtsTimestamp());
+        assertEquals(timebase, deserializedMetadata.getTimebase());
+        assertEquals(duration, deserializedMetadata.getDuration());
+        assertEquals(wallclock, deserializedMetadata.getWallclock());
+    }
+
+    @Test
+    void testH265LargeVarintValues() throws Exception {
+        // Test with large varint values (edge case)
+        byte[] payload = new byte[1024];
+        long largeSeqId = 0x7FFFFFFFL; // Large sequence number
+        long largePts = 0xFFFFFFFFL;
+        long largeTimebase = 1000000;
+
+        MoqMIObject obj = MoqMISerializer.createH265Object(
+                payload, largeSeqId, largePts, largePts, largeTimebase);
+
+        // Serialize and deserialize
+        MoqMISerializer serializer = new MoqMISerializer();
+        byte[] headerExtensions = serializer.serializeHeaderExtensions(obj);
+        byte[] payloadBytes = serializer.getPayload(obj);
+
+        MoqMIDeserializer deserializer = new MoqMIDeserializer();
+        MoqMIObject deserialized = deserializer.deserialize(headerExtensions, payloadBytes);
+
+        // Verify large values preserved
+        H265MetadataExtension metadata = deserialized.getHeaderExtension(H265MetadataExtension.class);
+        assertNotNull(metadata);
+        assertEquals(largeSeqId, metadata.getSeqId());
+        assertEquals(largePts, metadata.getPtsTimestamp());
+        assertEquals(largeTimebase, metadata.getTimebase());
+    }
+
+    @Test
     void testUtf8Text() throws Exception {
         // Create UTF-8 text object
         String textContent = "Hello MoQ Media Interop!";
@@ -297,12 +459,14 @@ class MoqMIObjectTest {
         assertEquals(0x01, MoqMIObject.MediaType.AUDIO_OPUS.getValue());
         assertEquals(0x02, MoqMIObject.MediaType.TEXT_UTF8.getValue());
         assertEquals(0x03, MoqMIObject.MediaType.AUDIO_AAC_LC.getValue());
+        assertEquals(0x04, MoqMIObject.MediaType.VIDEO_H265_HVCC.getValue());
 
         // Test fromValue
         assertEquals(MoqMIObject.MediaType.VIDEO_H264_AVCC, MoqMIObject.MediaType.fromValue(0x00));
         assertEquals(MoqMIObject.MediaType.AUDIO_OPUS, MoqMIObject.MediaType.fromValue(0x01));
         assertEquals(MoqMIObject.MediaType.TEXT_UTF8, MoqMIObject.MediaType.fromValue(0x02));
         assertEquals(MoqMIObject.MediaType.AUDIO_AAC_LC, MoqMIObject.MediaType.fromValue(0x03));
+        assertEquals(MoqMIObject.MediaType.VIDEO_H265_HVCC, MoqMIObject.MediaType.fromValue(0x04));
 
         // Test invalid value
         assertThrows(IllegalArgumentException.class, () -> MoqMIObject.MediaType.fromValue(0x99));
@@ -317,6 +481,8 @@ class MoqMIObjectTest {
         assertEquals(0x11, Utf8TextExtension.EXTENSION_ID);
         assertEquals(0x13, AacLcDataExtension.EXTENSION_ID);
         assertEquals(0x15, H264MetadataExtension.EXTENSION_ID);
+        assertEquals(0x17, H265MetadataExtension.EXTENSION_ID);
+        assertEquals(0x19, H265ExtradataExtension.EXTENSION_ID);
     }
 
     @Test
@@ -344,6 +510,14 @@ class MoqMIObjectTest {
         // H264MetadataExtension has odd ID (0x15), so should use byte array
         H264MetadataExtension metadata = new H264MetadataExtension();
         assertFalse(metadata.isVarintValue());
+
+        // H265MetadataExtension has odd ID (0x17), so should use byte array
+        H265MetadataExtension h265Metadata = new H265MetadataExtension();
+        assertFalse(h265Metadata.isVarintValue());
+
+        // H265ExtradataExtension has odd ID (0x19), so should use byte array
+        H265ExtradataExtension h265Extradata = new H265ExtradataExtension();
+        assertFalse(h265Extradata.isVarintValue());
     }
 
     @Test
@@ -414,5 +588,21 @@ class MoqMIObjectTest {
         assertNotNull(metadata.toString());
         assertTrue(metadata.toString().contains("seqId=1"));
         assertTrue(metadata.toString().contains("timebase=30"));
+
+        // H265 extensions
+        MoqMIObject h265Obj = new MoqMIObject(MoqMIObject.MediaType.VIDEO_H265_HVCC, new byte[200]);
+        h265Obj.setGroupId(3);
+        h265Obj.setObjectId(4);
+        assertNotNull(h265Obj.toString());
+        assertTrue(h265Obj.toString().contains("VIDEO_H265_HVCC"));
+
+        H265MetadataExtension h265Metadata = new H265MetadataExtension(2, 1000, 1000, 90000, 3000, 0);
+        assertNotNull(h265Metadata.toString());
+        assertTrue(h265Metadata.toString().contains("seqId=2"));
+        assertTrue(h265Metadata.toString().contains("timebase=90000"));
+
+        H265ExtradataExtension h265Extradata = new H265ExtradataExtension(new byte[]{0x01, 0x02});
+        assertNotNull(h265Extradata.toString());
+        assertTrue(h265Extradata.toString().contains("extradataLength=2"));
     }
 }
