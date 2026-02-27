@@ -5,28 +5,24 @@
 Media Over QUIC                                        J. Cenzano-Ferret
 Internet-Draft                                               A. Frindell
 Intended status: Informational                                      Meta
-Expires: xx xxxxx 2026                                  27 February 2026
+Expires: 31 August 2026                                      P. Gregoire
+                                                                    Red5
+                                                        27 February 2026
 
 
                            MoQ Media Interop
-                   draft-cenzano-moq-media-interop-04
+                 draft-cenzano-moq-media-interop-latest
 
 Abstract
 
    This protocol can be used to send and receive video and audio over
    Media over QUIC Transport [MOQT], using LOC[loc] packaging.
 
-   This document is a local working copy of draft-cenzano-moq-media-
-   interop-03 with HEVC/H.265 (Video H265 in HVCC) extensions added
-   by the red5-moq-pkgr project.  The base specification defines media
-   types 0x00-0x03.  This document adds media type 0x04 and header
-   extension types 0x17 and 0x19 for HEVC support.
-
 About This Document
 
    This note is to be removed before publishing as an RFC.
 
-   The latest revision of the base draft can be found at
+   The latest revision of this draft can be found at
    https://afrind.github.io/draft-cenzano-media-interop/draft-cenzano-
    moq-media-interop.html.  Status information for this document may be
    found at https://datatracker.ietf.org/doc/draft-cenzano-moq-media-
@@ -55,12 +51,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on xx xxxxx 2026.
-
+   This Internet-Draft will expire on 31 August 2026.
 
 Copyright Notice
 
-   Copyright (c) 2025 IETF Trust and the persons identified as the
+   Copyright (c) 2026 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
 
    This document is subject to BCP 78 and the IETF Trust's Legal
@@ -74,60 +69,58 @@ Copyright Notice
 
 Table of Contents
 
-   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
-   2.  Protocol Operation  . . . . . . . . . . . . . . . . . . . . .   3
-     2.1.  Track Names . . . . . . . . . . . . . . . . . . . . . . .   3
-     2.2.  Mapping Tracks to MoQT Object Model . . . . . . . . . . .   3
-     2.3.  Timestamps  . . . . . . . . . . . . . . . . . . . . . . .   4
-     2.4.  Object Format . . . . . . . . . . . . . . . . . . . . . .   4
+   1.  Introduction
+   2.  Protocol Operation
+     2.1.  Track Names
+     2.2.  Mapping Tracks to MoQT Object Model
+     2.3.  Timestamps
+     2.4.  Object Format
        2.4.1.  Media type header extension (header extension type =
-               0x0A) . . . . . . . . . . . . . . . . . . . . . . . .   4
+               0x0A)
        2.4.2.  Video H264 in AVCC metadata header extension (header
-               extension type = 0x15)  . . . . . . . . . . . . . . .   5
+               extension type = 0x15)
        2.4.3.  Video H264 in AVCC extradata header extension (Header
-               extension type = 0x0D)  . . . . . . . . . . . . . . .   6
+               extension type = 0x0D)
        2.4.4.  Audio Opus bitsream data header extension (Header
-               extension type = 0x0F)  . . . . . . . . . . . . . . .   6
+               extension type = 0x0F)
        2.4.5.  UTF-8 Text header extension (Header extension type =
-               0x11) . . . . . . . . . . . . . . . . . . . . . . . .   7
+               0x11)
        2.4.6.  Audio AAC-LC in MPEG4 bitstream data header extension
-               (Header extension type = 0x13)  . . . . . . . . . . .   8
+               (Header extension type = 0x13)
        2.4.7.  Video H265 in HVCC metadata header extension (header
-               extension type = 0x17)  . . . . . . . . . . . . . . .   9
+               extension type = 0x17)
        2.4.8.  Video H265 in HVCC extradata header extension (Header
-               extension type = 0x19)  . . . . . . . . . . . . . . .  10
-   3.  Examples  . . . . . . . . . . . . . . . . . . . . . . . . . .  11
-     3.1.  Example of first object for Video H264 in AVCC  . . . . .  11
+               extension type = 0x19)
+   3.  Examples
+     3.1.  Example of first object for Video H264 in AVCC
        3.1.1.  MOQT Object subgroup fields in case it carries Video
-               H264 in AVCC, 1st frame sent  . . . . . . . . . . . .  11
+               H264 in AVCC, 1st frame sent
        3.1.2.  MOQT Object subgroup fields in case it carries Video
                H264 in AVCC, 2nd or bigger frame with NO encoding
-               settings update . . . . . . . . . . . . . . . . . . .  12
+               settings update
        3.1.3.  MOQT Object DATAGRAM fields in case it carries Audio
-               AAC-LC in MPEG4 . . . . . . . . . . . . . . . . . . .  12
-     3.2.  Example of first object for Video H265 in HVCC  . . . . .  13
+               AAC-LC in MPEG4
+     3.2.  Example of first object for Video H265 in HVCC
        3.2.1.  MOQT Object subgroup fields in case it carries Video
-               H265 in HVCC, 1st frame sent  . . . . . . . . . . . .  13
+               H265 in HVCC, 1st frame sent
        3.2.2.  MOQT Object subgroup fields in case it carries Video
                H265 in HVCC, 2nd or bigger frame with NO encoding
-               settings update . . . . . . . . . . . . . . . . . . .  14
-   4.  Payloads  . . . . . . . . . . . . . . . . . . . . . . . . . .  14
-     4.1.  For object header media type = Video H264 in AVCC
-           (0x00)  . . . . . . . . . . . . . . . . . . . . . . . . .  14
-     4.2.  For object header media type = Audio Opus bitsream
-           (0x01)  . . . . . . . . . . . . . . . . . . . . . . . . .  14
-     4.3.  For object header media type = UTF-8 text (0x02)  . . . .  15
-     4.4.  For object header media type = Audio AAC-LC in MPEG4
-           (0x03)  . . . . . . . . . . . . . . . . . . . . . . . . .  15
-     4.5.  For object header media type = Video H265 in HVCC
-           (0x04)  . . . . . . . . . . . . . . . . . . . . . . . . .  15
-   5.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  15
-   6.  Conventions and Definitions . . . . . . . . . . . . . . . . .  15
-   7.  Security Considerations . . . . . . . . . . . . . . . . . . .  16
-   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  16
-   9.  Normative References  . . . . . . . . . . . . . . . . . . . .  16
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  16
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  16
+               settings update
+   4.  Payloads
+     4.1.  For object header media type = Video H264 in AVCC (0x00)
+     4.2.  For object header media type = Audio Opus bitsream (0x01)
+     4.3.  For object header media type = UTF-8 text (0x02)
+     4.4.  For object header media type = Audio AAC-LC in MPEG4 (0x03)
+     4.5.  For object header media type = Video H265 in HVCC (0x04)
+   5.  References
+   6.  Conventions and Definitions
+   7.  Security Considerations
+   8.  IANA Considerations
+   9.  Normative References
+   10. Normative References
+   Acknowledgments
+   Extension Summary
+   Authors' Addresses
 
 1.  Introduction
 
@@ -202,21 +195,21 @@ Table of Contents
    It defines the media type inside object payload (see section IANA in
    MOQ TODO), and it MUST be present in all objects
 
-                  +=======+============================+
-                  | Value | Media type                 |
-                  +=======+============================+
-                  |   0x0 | Video H264 in AVCC         |
-                  +-------+----------------------------+
-                  |   0x1 | Audio Opus bitsream        |
-                  +-------+----------------------------+
-                  |   0x2 | UTF-8 text                 |
-                  +-------+----------------------------+
-                  |   0x3 | Audio AAC-LC in MPEG4      |
-                  +-------+----------------------------+
-                  |   0x4 | Video H265 in HVCC         |
-                  +-------+----------------------------+
+                     +=======+=======================+
+                     | Value | Media type            |
+                     +=======+=======================+
+                     |   0x0 | Video H264 in AVCC    |
+                     +-------+-----------------------+
+                     |   0x1 | Audio Opus bitsream   |
+                     +-------+-----------------------+
+                     |   0x2 | UTF-8 text            |
+                     +-------+-----------------------+
+                     |   0x3 | Audio AAC-LC in MPEG4 |
+                     +-------+-----------------------+
+                     |   0x4 | Video H265 in HVCC    |
+                     +-------+-----------------------+
 
-                                 Table 1
+                                  Table 1
 
 2.4.2.  Video H264 in AVCC metadata header extension (header extension
         type = 0x15)
@@ -423,8 +416,7 @@ Table of Contents
      Wallclock (i)
    }
 
-          Figure 6: MOQT Media video H265 in HVCC metadata header
-                                 extension
+     Figure 6: MOQT Media video H265 in HVCC metadata header extension
 
    It MUST be present in all objects where "media type header extension"
    is equal to "Video H265 in HVCC"(0x4)
@@ -481,8 +473,7 @@ Table of Contents
      Extradata (..)
    }
 
-        Figure 7: MOQT Media video H265 in HVCC extradata header
-                                 extension
+     Figure 7: MOQT Media video H265 in HVCC extradata header extension
 
 2.4.8.1.  Extradata
 
@@ -492,8 +483,8 @@ Table of Contents
    HEVCDecoderConfigurationRecord) we should error with "Protocol
    violation".
 
-   The HEVCDecoderConfigurationRecord contains the VPS, SPS, and PPS
-   NAL units required to initialize the HEVC decoder.
+   The HEVCDecoderConfigurationRecord contains the VPS, SPS, and PPS NAL
+   units required to initialize the HEVC decoder.
 
 3.  Examples
 
@@ -647,29 +638,33 @@ Table of Contents
 
 4.5.  For object header media type = Video H265 in HVCC (0x04)
 
-   Payload MUST be H.265/HEVC with bitstream HVC1 format as described
-   in [ISO14496-15] section 8.3.  Using 4 bytes size field length,
-   as indicated by lengthSizeMinusOne = 3 in the
+   Payload MUST be H.265/HEVC with bitstream HVC1 format as described in
+   [ISO14496-15] section 8.3.  Using 4 bytes size field length, as
+   indicated by lengthSizeMinusOne = 3 in the
    HEVCDecoderConfigurationRecord.
 
    Each payload contains one or more HEVC NAL units prefixed with a
    4-byte length field.  The NAL unit types follow [ISO23008-2]:
 
-   - IDR_W_RADL (19), IDR_N_LP (20): Instantaneous Decode Refresh
-   - CRA_NUT (21): Clean Random Access
-   - TRAIL_N (0), TRAIL_R (1): Trailing pictures
-   - TSA_N (2), TSA_R (3): Temporal Sub-layer Access
-   - STSA_N (4), STSA_R (5): Step-wise Temporal Sub-layer Access
-   - BLA_W_LP (16), BLA_W_RADL (17), BLA_N_LP (18): Broken Link Access
+   *  IDR_W_RADL (19), IDR_N_LP (20): Instantaneous Decode Refresh
+
+   *  CRA_NUT (21): Clean Random Access
+
+   *  TRAIL_N (0), TRAIL_R (1): Trailing pictures
+
+   *  TSA_N (2), TSA_R (3): Temporal Sub-layer Access
+
+   *  STSA_N (4), STSA_R (5): Step-wise Temporal Sub-layer Access
+
+   *  BLA_W_LP (16), BLA_W_RADL (17), BLA_N_LP (18): Broken Link Access
 
 5.  References
 
    [ISO14496-15:2019] "Carriage of network abstraction layer (NAL) unit
    structured video in the ISO base media file format", ISO
    ISO14496-15:2019, International Organization for Standardization,
-   October, 2022.
-   Note: Section 5.3 defines AVC (H.264) sample format and
-   AVCDecoderConfigurationRecord.  Section 8.3 defines HEVC (H.265)
+   October, 2022.  Note: Section 5.3 defines AVC (H.264) sample format
+   and AVCDecoderConfigurationRecord.  Section 8.3 defines HEVC (H.265)
    sample format and HEVCDecoderConfigurationRecord.
 
    [ISO14496-3:2009] "Information technology - Coding of audio-visual
@@ -679,18 +674,17 @@ Table of Contents
    [ISO23008-2:2020] "Information technology - High efficiency coding
    and media delivery in heterogeneous environments - Part 2: High
    efficiency video coding", ISO/IEC 23008-2:2020 (also published as
-   ITU-T H.265), International Organization for Standardization,
-   June, 2020.
-   Note: Defines the HEVC video coding standard including NAL unit
-   types, picture types (IDR, CRA, BLA, TSA, STSA), and temporal
+   ITU-T H.265), International Organization for Standardization, June,
+   2020.  Note: Defines the HEVC video coding standard including NAL
+   unit types, picture types (IDR, CRA, BLA, TSA, STSA), and temporal
    sub-layer structures referenced in Section 4.5.
 
 6.  Conventions and Definitions
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
    "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
-   "OPTIONAL" in this document are to be interpreted as described in
-   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
 7.  Security Considerations
@@ -703,53 +697,90 @@ Table of Contents
 
 9.  Normative References
 
-   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", BCP 14, RFC 2119,
-              DOI 10.17487/RFC2119, March 1997,
-              <https://www.rfc-editor.org/rfc/rfc2119>.
+   [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+   Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March
+   1997, https://www.rfc-editor.org/rfc/rfc2119 (https://www.rfc-
+   editor.org/rfc/rfc2119).
+
+   [RFC3629] Yergeau, F., "UTF-8, a transformation format of ISO 10646",
+   STD 63, RFC 3629, DOI 10.17487/RFC3629, November 2003,
+   https://www.rfc-editor.org/rfc/rfc3629 (https://www.rfc-
+   editor.org/rfc/rfc3629).
+
+   [RFC6716] Valin, JM., Vos, K., and T.  Terriberry, "Definition of the
+   Opus Audio Codec", RFC 6716, DOI 10.17487/RFC6716, September 2012,
+   https://www.rfc-editor.org/rfc/rfc6716 (https://www.rfc-
+   editor.org/rfc/rfc6716).
+
+   [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
+   Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174, May 2017,
+   https://www.rfc-editor.org/rfc/rfc8174 (https://www.rfc-
+   editor.org/rfc/rfc8174).
+
+   [ISO14496-15] ISO, "Information technology - Coding of audio-visual
+   objects - Part 15: Carriage of network abstraction layer (NAL) unit
+   structured video in the ISO base media file format", ISO/IEC
+   14496-15:2019, International Organization for Standardization, 2019,
+   https://www.iso.org/standard/74429.html (https://www.iso.org/
+   standard/74429.html).  Sections referenced: - 5.3.3.1:
+   AVCDecoderConfigurationRecord (H.264/AVC) - 8.3.3.1.2:
+   HEVCDecoderConfigurationRecord (H.265/HEVC)
+
+   [ISO23008-2] ITU-T and ISO/IEC, "High efficiency video coding", ITU-T
+   Recommendation H.265 | ISO/IEC 23008-2:2020, International
+   Telecommunication Union and International Organization for
+   Standardization, June 2020, https://www.itu.int/rec/T-REC-H.265
+   (https://www.itu.int/rec/T-REC-H.265).  Defines the HEVC codec and
+   NAL unit structure used in Section 4.5 payload format.
+
+   [ISO14496-3] ISO, "Information technology - Coding of audio-visual
+   objects - Part 3: Audio", ISO/IEC 14496-3:2009, International
+   Organization for Standardization, 2009, https://www.iso.org/
+   standard/53943.html (https://www.iso.org/standard/53943.html).
+   Section 4.4.2.1: AAC raw_data_block() syntax.
+
+10.  Normative References
 
    [RFC3629]  Yergeau, F., "UTF-8, a transformation format of ISO
               10646", STD 63, RFC 3629, DOI 10.17487/RFC3629, November
               2003, <https://www.rfc-editor.org/rfc/rfc3629>.
 
-   [RFC6716]  Valin, JM., Vos, K., and T. Terriberry, "Definition of
-              the Opus Audio Codec", RFC 6716, DOI 10.17487/RFC6716,
+   [RFC6716]  Valin, JM., Vos, K., and T. Terriberry, "Definition of the
+              Opus Audio Codec", RFC 6716, DOI 10.17487/RFC6716,
               September 2012, <https://www.rfc-editor.org/rfc/rfc6716>.
-
-   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
-              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
-              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
-
-   [ISO14496-15]
-              ISO, "Information technology - Coding of audio-visual
-              objects - Part 15: Carriage of network abstraction layer
-              (NAL) unit structured video in the ISO base media file
-              format", ISO/IEC 14496-15:2019, International
-              Organization for Standardization, 2019,
-              <https://www.iso.org/standard/74429.html>.
-              Sections referenced:
-              - 5.3.3.1: AVCDecoderConfigurationRecord (H.264/AVC)
-              - 8.3.3.1.2: HEVCDecoderConfigurationRecord (H.265/HEVC)
-
-   [ISO23008-2]
-              ITU-T and ISO/IEC, "High efficiency video coding",
-              ITU-T Recommendation H.265 | ISO/IEC 23008-2:2020,
-              International Telecommunication Union and International
-              Organization for Standardization, June 2020,
-              <https://www.itu.int/rec/T-REC-H.265>.
-              Defines the HEVC codec and NAL unit structure used in
-              Section 4.5 payload format.
-
-   [ISO14496-3]
-              ISO, "Information technology - Coding of audio-visual
-              objects - Part 3: Audio", ISO/IEC 14496-3:2009,
-              International Organization for Standardization, 2009,
-              <https://www.iso.org/standard/53943.html>.
-              Section 4.4.2.1: AAC raw_data_block() syntax.
 
 Acknowledgments
 
    TODO acknowledge.
+
+Extension Summary
+
+   The following table summarizes all header extension types:
+
+      +==============+=======================+=====================+
+      | Extension ID | Name                  | Value Format        |
+      +==============+=======================+=====================+
+      | 0x0A (even)  | Media Type            | Varint              |
+      +--------------+-----------------------+---------------------+
+      | 0x0D (odd)   | H264 Extradata (AVCC) | Byte array (length) |
+      +--------------+-----------------------+---------------------+
+      | 0x0F (odd)   | Opus Audio Data       | Byte array (length) |
+      +--------------+-----------------------+---------------------+
+      | 0x11 (odd)   | UTF-8 Text            | Byte array (length) |
+      +--------------+-----------------------+---------------------+
+      | 0x13 (odd)   | AAC-LC Audio Data     | Byte array (length) |
+      +--------------+-----------------------+---------------------+
+      | 0x15 (odd)   | H264 Metadata (AVCC)  | Byte array (length) |
+      +--------------+-----------------------+---------------------+
+      | 0x17 (odd)   | H265 Metadata (HVCC)  | Byte array (length) |
+      +--------------+-----------------------+---------------------+
+      | 0x19 (odd)   | H265 Extradata (HVCC) | Byte array (length) |
+      +--------------+-----------------------+---------------------+
+
+                                 Table 2
+
+   Even extension IDs carry a varint value directly.  Odd extension IDs
+   carry a varint length followed by that many bytes.
 
 Authors' Addresses
 
@@ -766,31 +797,3 @@ Authors' Addresses
    Paul Gregoire
    Red5
    Email: paul@red5.net
-
-Extension Summary (red5-moq-pkgr additions)
-
-   The following table summarizes all header extension types, including
-   the HEVC additions:
-
-   +===============+============================+======================+
-   | Extension ID  | Name                       | Value Format         |
-   +===============+============================+======================+
-   |  0x0A (even)  | Media Type                 | Varint               |
-   +---------------+----------------------------+----------------------+
-   |  0x0D (odd)   | H264 Extradata (AVCC)      | Byte array (length)  |
-   +---------------+----------------------------+----------------------+
-   |  0x0F (odd)   | Opus Audio Data            | Byte array (length)  |
-   +---------------+----------------------------+----------------------+
-   |  0x11 (odd)   | UTF-8 Text                 | Byte array (length)  |
-   +---------------+----------------------------+----------------------+
-   |  0x13 (odd)   | AAC-LC Audio Data          | Byte array (length)  |
-   +---------------+----------------------------+----------------------+
-   |  0x15 (odd)   | H264 Metadata (AVCC)       | Byte array (length)  |
-   +---------------+----------------------------+----------------------+
-   |  0x17 (odd)   | H265 Metadata (HVCC)       | Byte array (length)  |
-   +---------------+----------------------------+----------------------+
-   |  0x19 (odd)   | H265 Extradata (HVCC)      | Byte array (length)  |
-   +---------------+----------------------------+----------------------+
-
-   Even extension IDs carry a varint value directly.
-   Odd extension IDs carry a varint length followed by that many bytes.
