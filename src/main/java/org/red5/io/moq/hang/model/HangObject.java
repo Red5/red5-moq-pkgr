@@ -38,6 +38,7 @@ public class HangObject {
     public enum VideoCodec {
         H264_ANNEXB,   // Annex-B encoding (no description field in catalog)
         H264_AVCC,     // AVCC encoding (with description field in catalog)
+        H265_HVCC,     // HEVC HVCC encoding
         VP8,
         VP9,
         AV1

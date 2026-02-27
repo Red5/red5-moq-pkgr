@@ -27,7 +27,8 @@ public class MoqMIObject {
         VIDEO_H264_AVCC(0x00),
         AUDIO_OPUS(0x01),
         TEXT_UTF8(0x02),
-        AUDIO_AAC_LC(0x03);
+        AUDIO_AAC_LC(0x03),
+        VIDEO_H265_HVCC(0x04);
 
         private final int value;
 

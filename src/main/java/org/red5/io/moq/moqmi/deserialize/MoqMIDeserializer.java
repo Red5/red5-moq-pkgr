@@ -124,6 +124,8 @@ public class MoqMIDeserializer {
             case OpusDataExtension.EXTENSION_ID -> new OpusDataExtension();
             case Utf8TextExtension.EXTENSION_ID -> new Utf8TextExtension();
             case AacLcDataExtension.EXTENSION_ID -> new AacLcDataExtension();
+            case H265MetadataExtension.EXTENSION_ID -> new H265MetadataExtension();
+            case H265ExtradataExtension.EXTENSION_ID -> new H265ExtradataExtension();
             default -> null;
         };
     }

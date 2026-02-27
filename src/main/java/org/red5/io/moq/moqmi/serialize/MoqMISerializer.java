@@ -152,6 +152,70 @@ public class MoqMISerializer {
     }
 
     /**
+     * Create a minimal H265 video object.
+     *
+     * @param payload the H265 video data in AVCC format
+     * @param seqId sequence ID
+     * @param ptsTimestamp PTS in timebase units
+     * @param dtsTimestamp DTS in timebase units
+     * @param timebase timebase denominator
+     * @return a new MoQ-MI object
+     */
+    public static MoqMIObject createH265Object(byte[] payload, long seqId, long ptsTimestamp,
+                                                long dtsTimestamp, long timebase) {
+        long defaultDuration = timebase / 30;
+        return createH265Object(payload, seqId, ptsTimestamp, dtsTimestamp, timebase, defaultDuration);
+    }
+
+    /**
+     * Create a H265 video object with duration.
+     *
+     * @param payload the H265 video data in AVCC format
+     * @param seqId sequence ID
+     * @param ptsTimestamp PTS in timebase units
+     * @param dtsTimestamp DTS in timebase units
+     * @param timebase timebase denominator
+     * @param duration frame duration in timebase units
+     * @return a new MoQ-MI object
+     */
+    public static MoqMIObject createH265Object(byte[] payload, long seqId, long ptsTimestamp,
+                                                long dtsTimestamp, long timebase, long duration) {
+        MoqMIObject obj = new MoqMIObject(MoqMIObject.MediaType.VIDEO_H265_HVCC, payload);
+
+        // Add required media type extension
+        obj.addHeaderExtension(new MediaTypeExtension(MoqMIObject.MediaType.VIDEO_H265_HVCC));
+
+        // Add H265 metadata extension
+        H265MetadataExtension metadata = new H265MetadataExtension(
+                seqId, ptsTimestamp, dtsTimestamp, timebase, duration, 0);
+        obj.addHeaderExtension(metadata);
+
+        return obj;
+    }
+
+    /**
+     * Create a minimal H265 video object with extradata (for IDR frames).
+     *
+     * @param payload the H265 video data in AVCC format
+     * @param seqId sequence ID
+     * @param ptsTimestamp PTS in timebase units
+     * @param dtsTimestamp DTS in timebase units
+     * @param timebase timebase denominator
+     * @param extradata HEVCDecoderConfigurationRecord
+     * @return a new MoQ-MI object
+     */
+    public static MoqMIObject createH265ObjectWithExtradata(byte[] payload, long seqId,
+                                                             long ptsTimestamp, long dtsTimestamp,
+                                                             long timebase, byte[] extradata) {
+        MoqMIObject obj = createH265Object(payload, seqId, ptsTimestamp, dtsTimestamp, timebase);
+
+        // Add H265 extradata extension (for IDR frames)
+        obj.addHeaderExtension(new H265ExtradataExtension(extradata));
+
+        return obj;
+    }
+
+    /**
      * Create a minimal Opus audio object.
      *
      * @param payload the Opus audio data
