@@ -203,15 +203,16 @@ public class TestMediaGenerator {
             if (cols.length < 11) continue;
 
             long pts, dts;
+            // Always use time-based columns (pts_time, dts_time) and convert to 90kHz
+            // because the source fMP4 may use a different timescale (e.g., 1200000Hz)
             try {
-                pts = Long.parseLong(cols[2].strip());
-                dts = Long.parseLong(cols[4].strip());
-            } catch (NumberFormatException e) {
-                // Use time-based columns and convert to 90kHz ticks
                 double ptsTime = Double.parseDouble(cols[3].strip());
                 double dtsTime = Double.parseDouble(cols[5].strip());
                 pts = Math.round(ptsTime * 90000);
                 dts = Math.round(dtsTime * 90000);
+            } catch (NumberFormatException e) {
+                pts = Long.parseLong(cols[2].strip());
+                dts = Long.parseLong(cols[4].strip());
             }
             boolean isKey = cols[10].strip().contains("K");
 

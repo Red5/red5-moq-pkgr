@@ -19,6 +19,7 @@ import java.util.List;
 public class MoovBox extends Box {
     private InitializationSegment.MvhdBox mvhd;
     private List<TrakBox> traks;
+    private MvexBox mvex;
 
     public MoovBox() {
         super("moov");
@@ -45,6 +46,14 @@ public class MoovBox extends Box {
         this.traks.add(trak);
     }
 
+    public MvexBox getMvex() {
+        return mvex;
+    }
+
+    public void setMvex(MvexBox mvex) {
+        this.mvex = mvex;
+    }
+
     @Override
     protected long calculateSize() {
         long size = 8; // header
@@ -53,6 +62,9 @@ public class MoovBox extends Box {
         }
         for (TrakBox trak : traks) {
             size += trak.calculateSize();
+        }
+        if (mvex != null) {
+            size += mvex.calculateSize();
         }
         return size;
     }
@@ -72,6 +84,10 @@ public class MoovBox extends Box {
 
         for (TrakBox trak : traks) {
             baos.write(trak.serialize());
+        }
+
+        if (mvex != null) {
+            baos.write(mvex.serialize());
         }
 
         return baos.toByteArray();
@@ -106,6 +122,10 @@ public class MoovBox extends Box {
                     TrakBox trak = new TrakBox();
                     trak.deserialize(buffer);
                     traks.add(trak);
+                }
+                case "mvex" -> {
+                    mvex = new MvexBox();
+                    mvex.deserialize(buffer);
                 }
                 default -> buffer.position(positionBefore + childSize);
             }
@@ -890,6 +910,203 @@ public class MoovBox extends Box {
             readHeader(buffer);
             buffer.getInt(); // version/flags
             buffer.getInt(); // entry_count
+        }
+    }
+
+    /**
+     * Movie Extends Box (mvex) - ISO/IEC 14496-12 Section 8.8.1
+     *
+     * Required in the moov box for fragmented MP4 files.
+     * Contains one trex box per track to provide default sample values
+     * for the track fragments.
+     */
+    public static class MvexBox extends Box {
+        private List<TrexBox> trexBoxes;
+
+        public MvexBox() {
+            super("mvex");
+            this.trexBoxes = new ArrayList<>();
+        }
+
+        public List<TrexBox> getTrexBoxes() {
+            return trexBoxes;
+        }
+
+        public void addTrex(TrexBox trex) {
+            this.trexBoxes.add(trex);
+        }
+
+        @Override
+        protected long calculateSize() {
+            long size = 8; // header
+            for (TrexBox trex : trexBoxes) {
+                size += trex.calculateSize();
+            }
+            return size;
+        }
+
+        @Override
+        public byte[] serialize() throws IOException {
+            this.size = calculateSize();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            ByteBuffer header = ByteBuffer.allocate(8);
+            writeHeader(header);
+            baos.write(header.array());
+
+            for (TrexBox trex : trexBoxes) {
+                baos.write(trex.serialize());
+            }
+
+            return baos.toByteArray();
+        }
+
+        @Override
+        public void deserialize(ByteBuffer buffer) throws IOException {
+            long boxSize = readHeader(buffer);
+            int startPosition = buffer.position();
+            int endPosition = (int) (startPosition + boxSize - 8);
+
+            while (buffer.position() < endPosition && buffer.remaining() >= 8) {
+                int positionBefore = buffer.position();
+
+                int childSize = buffer.getInt();
+                byte[] typeBytes = new byte[4];
+                buffer.get(typeBytes);
+                String childType = new String(typeBytes);
+
+                if (childSize < 8 || childSize > buffer.capacity()) {
+                    throw new IOException("Invalid child box size in MvexBox: " + childSize);
+                }
+
+                buffer.position(positionBefore);
+
+                if ("trex".equals(childType)) {
+                    TrexBox trex = new TrexBox();
+                    trex.deserialize(buffer);
+                    trexBoxes.add(trex);
+                } else {
+                    buffer.position(positionBefore + childSize);
+                }
+
+                if (buffer.position() <= positionBefore) {
+                    throw new IOException("Buffer position did not advance for MvexBox child: " + childType);
+                }
+            }
+        }
+
+        @Override
+        public String toString() {
+            return String.format("MvexBox{trexCount=%d}", trexBoxes.size());
+        }
+    }
+
+    /**
+     * Track Extends Box (trex) - ISO/IEC 14496-12 Section 8.8.3
+     *
+     * Sets up default values used by the movie fragments. Each track in a
+     * fragmented file must have exactly one trex in the mvex box.
+     *
+     * Fields (all 32-bit unsigned):
+     * - track_ID
+     * - default_sample_description_index
+     * - default_sample_duration
+     * - default_sample_size
+     * - default_sample_flags
+     */
+    public static class TrexBox extends Box {
+        private long trackId;
+        private long defaultSampleDescriptionIndex = 1;
+        private long defaultSampleDuration;
+        private long defaultSampleSize;
+        private int defaultSampleFlags;
+
+        public TrexBox() {
+            super("trex");
+        }
+
+        public TrexBox(long trackId) {
+            super("trex");
+            this.trackId = trackId;
+        }
+
+        public long getTrackId() {
+            return trackId;
+        }
+
+        public void setTrackId(long trackId) {
+            this.trackId = trackId;
+        }
+
+        public long getDefaultSampleDescriptionIndex() {
+            return defaultSampleDescriptionIndex;
+        }
+
+        public void setDefaultSampleDescriptionIndex(long defaultSampleDescriptionIndex) {
+            this.defaultSampleDescriptionIndex = defaultSampleDescriptionIndex;
+        }
+
+        public long getDefaultSampleDuration() {
+            return defaultSampleDuration;
+        }
+
+        public void setDefaultSampleDuration(long defaultSampleDuration) {
+            this.defaultSampleDuration = defaultSampleDuration;
+        }
+
+        public long getDefaultSampleSize() {
+            return defaultSampleSize;
+        }
+
+        public void setDefaultSampleSize(long defaultSampleSize) {
+            this.defaultSampleSize = defaultSampleSize;
+        }
+
+        public int getDefaultSampleFlags() {
+            return defaultSampleFlags;
+        }
+
+        public void setDefaultSampleFlags(int defaultSampleFlags) {
+            this.defaultSampleFlags = defaultSampleFlags;
+        }
+
+        @Override
+        protected long calculateSize() {
+            // 8 (header) + 4 (version/flags) + 4 (trackId) + 4 (descIndex)
+            // + 4 (duration) + 4 (size) + 4 (flags) = 32
+            return 32;
+        }
+
+        @Override
+        public byte[] serialize() throws IOException {
+            this.size = calculateSize();
+            ByteBuffer buffer = ByteBuffer.allocate((int) size);
+            writeHeader(buffer);
+            buffer.putInt(0); // version=0, flags=0
+            buffer.putInt((int) trackId);
+            buffer.putInt((int) defaultSampleDescriptionIndex);
+            buffer.putInt((int) defaultSampleDuration);
+            buffer.putInt((int) defaultSampleSize);
+            buffer.putInt(defaultSampleFlags);
+            return buffer.array();
+        }
+
+        @Override
+        public void deserialize(ByteBuffer buffer) throws IOException {
+            readHeader(buffer);
+            buffer.getInt(); // version/flags
+            this.trackId = Integer.toUnsignedLong(buffer.getInt());
+            this.defaultSampleDescriptionIndex = Integer.toUnsignedLong(buffer.getInt());
+            this.defaultSampleDuration = Integer.toUnsignedLong(buffer.getInt());
+            this.defaultSampleSize = Integer.toUnsignedLong(buffer.getInt());
+            this.defaultSampleFlags = buffer.getInt();
+        }
+
+        @Override
+        public String toString() {
+            return String.format("TrexBox{trackId=%d, descIndex=%d, duration=%d, size=%d, flags=0x%08X}",
+                    trackId, defaultSampleDescriptionIndex, defaultSampleDuration,
+                    defaultSampleSize, defaultSampleFlags);
         }
     }
 }

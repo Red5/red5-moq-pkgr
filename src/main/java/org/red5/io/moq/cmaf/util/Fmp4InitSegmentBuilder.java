@@ -68,6 +68,18 @@ public class Fmp4InitSegmentBuilder {
             moov.addTrak(track.toTrak());
         }
 
+        // Build mvex box with trex entries (required for fragmented MP4)
+        MoovBox.MvexBox mvex = new MoovBox.MvexBox();
+        for (TrackConfig track : tracks) {
+            MoovBox.TrexBox trex = new MoovBox.TrexBox(track.trackId);
+            trex.setDefaultSampleDescriptionIndex(1);
+            trex.setDefaultSampleDuration(0);
+            trex.setDefaultSampleSize(0);
+            trex.setDefaultSampleFlags(0);
+            mvex.addTrex(trex);
+        }
+        moov.setMvex(mvex);
+
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(ftyp.serialize());
         out.write(moov.serialize());
