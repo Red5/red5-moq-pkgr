@@ -15,6 +15,8 @@ import java.util.List;
  * Structure:
  * - mvhd (Movie Header Box)
  * - trak (Track Box) - one or more
+ * - mvex (Movie Extends Box) - required for fragmented MP4 (ISO 14496-12 Section 8.8.1)
+ *   - trex (Track Extends Box) - one per track (ISO 14496-12 Section 8.8.3)
  */
 public class MoovBox extends Box {
     private InitializationSegment.MvhdBox mvhd;

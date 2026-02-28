@@ -25,6 +25,8 @@ import java.util.List;
  *         - stbl (Sample Table Box)
  *           - stsd (Sample Description Box)
  *           - stts, stsc, stsz, stco (placeholder boxes)
+ *   - mvex (Movie Extends Box) - required for fragmented MP4
+ *     - trex (Track Extends Box) - one per track, default sample values
  */
 public class InitializationSegment {
 

@@ -14,6 +14,9 @@ import java.util.List;
  * Utility builder for fMP4 initialization segments (ftyp + moov).
  * This is intended for CMAF-style streaming where the init segment
  * is sent once, followed by fragments.
+ *
+ * The moov box includes an mvex container with one trex per track,
+ * as required by ISO 14496-12 for fragmented MP4 files.
  */
 public class Fmp4InitSegmentBuilder {
 
