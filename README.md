@@ -38,10 +38,12 @@ A pure Java 21 library for serialization and deserialization of media content fo
 ### MSF Support
 
 - **Catalog Builder**: Fluent builder API for creating MSF catalogs and tracks
+- **Shared Catalog Base**: `MsfCatalogSerializer` now inherits the common `org.red5.io.moq.catalog.CatalogSerializer` JSON base
 - **Live/VOD Content**: Support for both live streaming (targetLatency) and VOD (trackDuration)
 - **Media Timeline**: JSON array format with GZIP compression for seeking in live streams
 - **Event Timeline**: Application metadata with wallclock, location, or media PTS indexing
 - **Track Types**: Video, audio, caption, subtitle, sign language, media/event timeline
+- **CMSF Support**: `cmaf` packaging, SAP metadata fields, and typed CMSF SAP event timeline helpers
 - **Simulcast**: Alt group support for adaptive bitrate switching
 - **SVC Layers**: Temporal and spatial layer dependencies
 - **Delta Updates**: Add, remove, or clone tracks without full catalog resend
@@ -67,7 +69,7 @@ Tests are included in the build process, to skip tests use `-DskipTests` flag.
 mvn clean package
 ```
 
-All 336 tests should pass with 100% success rate.
+The Maven build runs the full unit test suite.
 
 ## Quick Start
 
@@ -352,6 +354,15 @@ if (mediaType == MoqMIObject.MediaType.VIDEO_H264_AVCC) {
 ## MSF (MOQT Streaming Format) Catalogs and Timelines
 
 This library provides comprehensive support for MSF (MOQT Streaming Format) as defined in draft-ietf-moq-msf-00, which supersedes the WARP format. MSF catalogs are JSON payloads carried on the `catalog` track.
+
+Catalog implementation note:
+
+- `org.red5.io.moq.catalog.CatalogSerializer` is now the shared JSON serialization base for catalog implementations.
+- `WarpCatalogSerializer` and `MsfCatalogSerializer` inherit that shared base instead of owning separate Gson stacks.
+- `org.red5.io.moq.catalog.WarpCatalogAdapter` and `org.red5.io.moq.catalog.MsfCatalogAdapter` convert between the shared catalog model and the WARP/MSF POJOs.
+- For application code, prefer the format-specific APIs:
+  - `MsfCatalog` / `MsfTrack` / `MsfCatalogSerializer` for MSF and CMSF
+  - `WarpCatalog` / `WarpTrack` / `WarpCatalogSerializer` for legacy WARP
 
 ### MSF Live Video/Audio Catalog
 
@@ -753,6 +764,12 @@ long groupId = MsfConstants.generateInitialGroupId();
 This library also includes support for the legacy WARP and CARP formats. WARP/CARP catalogs are JSON payloads carried on the `catalog` track, and WARP timeline tracks use CSV format.
 When guidance differs, IETF drafts in `docs/` are authoritative over non-IETF drafts.
 
+Implementation note:
+
+- WARP serialization now uses the same shared `CatalogSerializer` base as MSF.
+- The shared `org.red5.io.moq.catalog` model has been widened to carry WARP/MSF-style fields such as `deltaUpdate`, `generatedAt`, `isComplete`, `role`, `isLive`, `targetLatency`, and SAP metadata.
+- The legacy standalone catalog-format draft should be treated as historical here; current catalog work in this repository follows MSF/WARP semantics.
+
 ### WARP Catalog (JSON)
 
 ```java
@@ -808,10 +825,30 @@ String json = new CarpSapTimeline().toJson(List.of(
 
 ## Architecture
 
+### Catalog Architecture
+
+Catalog support is now split into three layers:
+
+1. Shared JSON/model infrastructure in `org.red5.io.moq.catalog`
+2. Format-specific POJOs and validators in `org.red5.io.moq.warp.catalog` and `org.red5.io.moq.msf.catalog`
+3. Adapter classes bridging the shared model and the format-specific models
+
+Current guidance:
+
+- Use `MsfCatalogSerializer` or `WarpCatalogSerializer` in application code when you want format-specific JSON.
+- Use `CatalogSerializer` when you need the shared catalog model directly.
+- Use `MsfCatalogAdapter` and `WarpCatalogAdapter` when converting between the shared model and format-specific models.
+
 ### Package Structure
 
 ```
 org.red5.io.moq
+├── catalog/            # Shared catalog model, serializer base, and adapters
+│   ├── Catalog.java
+│   ├── CatalogTrack.java
+│   ├── CatalogSerializer.java
+│   ├── WarpCatalogAdapter.java
+│   └── MsfCatalogAdapter.java
 ├── cmaf/               # CMAF format support
 │   ├── model/              # Data structures for ISO BMFF boxes
 │   │   ├── Box.java
@@ -856,7 +893,7 @@ org.red5.io.moq
 │   │   └── MoqMISerializer.java
 │   └── deserialize/        # MoqMI deserialization
 │       └── MoqMIDeserializer.java
-└── msf/                # MSF (MOQT Streaming Format) support
+├── msf/                # MSF (MOQT Streaming Format) support
     ├── catalog/            # Catalog classes
     │   ├── MsfCatalog.java         # Catalog with builder pattern
     │   ├── MsfTrack.java           # Track with builder pattern
@@ -864,12 +901,14 @@ org.red5.io.moq
     │   ├── MsfCatalogValidator.java
     │   ├── MsfConstants.java
     │   ├── TrackRole.java          # Enum: video, audio, caption, etc.
-    │   └── PackagingType.java      # Enum: loc, mediatimeline, eventtimeline
+    │   └── PackagingType.java      # Enum: loc, cmaf, mediatimeline, eventtimeline
     └── timeline/           # Timeline classes
         ├── MsfMediaTimeline.java       # JSON array format
         ├── MsfMediaTimelineRecord.java
         ├── MsfEventTimeline.java       # JSON object format
-        └── MsfEventTimelineEntry.java
+        ├── MsfEventTimelineEntry.java
+        ├── CmsfSapTimeline.java
+        └── CmsfSapTimelineEntry.java
 ```
 
 ## Specification Compliance
@@ -898,18 +937,29 @@ This library implements [draft-ietf-moq-loc](https://datatracker.ietf.org/doc/ht
 
 This library implements [draft-ietf-moq-msf-00](https://datatracker.ietf.org/doc/draft-ietf-moq-msf/):
 
-- **Catalog Format**: JSON-based catalog with version, tracks, and metadata
+- **Catalog Format**: JSON-based catalog with version, tracks, delta updates, and metadata
 - **Track Types**: Video, audio, caption, subtitle, sign language, media timeline, event timeline
-- **Packaging Types**: LOC, mediatimeline, eventtimeline
+- **Packaging Types**: LOC, CMAF, mediatimeline, eventtimeline
 - **Live Streaming**: `isLive=true` with `targetLatency` for real-time playback control
 - **VOD Content**: `isLive=false` with `trackDuration` for on-demand content
 - **Media Timeline**: JSON array format `[[pts, [groupId, objectId], wallclock], ...]` with GZIP compression
 - **Event Timeline**: JSON object format with wallclock (`t`), location (`l`), or media PTS (`m`) indexing
+- **Shared Serializer Base**: WARP/MSF serializers inherit the common `CatalogSerializer` JSON implementation
+- **Catalog Adapters**: Shared-model conversion helpers for WARP/MSF in `org.red5.io.moq.catalog`
 - **Broadcast Termination**: `isComplete=true` with empty tracks signals stream end
 - **Delta Updates**: Add, remove, or clone tracks without full catalog resend
 - **Simulcast**: Alt groups with matching `targetLatency` for ABR switching
 - **SVC Layers**: `temporalId`, `spatialId`, and `depends` for scalable video
 - **Validation**: MSF-specific rules (latency consistency, timeline dependencies, etc.)
+
+### CMSF (CMAF within MSF)
+
+This library also implements the CMSF draft carried in `docs/draft-ietf-moq-cmsf-00.txt`:
+
+- **CMAF Catalog Packaging**: `packaging="cmaf"` for MSF/CMSF tracks
+- **Base64 Init Data**: Builder and validation support for CMAF `initData`
+- **SAP Metadata Fields**: `maxGrpSapStartingType` and `maxObjSapStartingType`
+- **SAP Event Timeline**: Typed CMSF helper for `eventType="org.ietf.moq.cmsf.sap"`
 
 ## Testing
 
