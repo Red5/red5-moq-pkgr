@@ -36,8 +36,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.plugin.validation>brief</maven.plugin.validation>
-        <!-- prevents the deploy goal from being executed accidentially -->
-        <maven.deploy.skip>true</maven.deploy.skip>
         <!-- allows tests to be built and works in conjuction with skipTests property -->
         <maven.test.skip>false</maven.test.skip>
         <!-- prevents built tests from running -->
