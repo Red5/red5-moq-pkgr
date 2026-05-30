@@ -103,6 +103,20 @@ public class MsfTrack extends WarpTrack {
     }
 
     /**
+     * Create a builder for an m2ts (MPEG-2 Transport Stream) video track per
+     * draft-gregoire-moq-msfts. The source-packet size is required and MUST be
+     * either 188 (TS packets) or 192 (M2TS source packets).
+     */
+    public static Builder m2ts(String name, int packetSize) {
+        return new Builder()
+            .name(name)
+            .packaging(PackagingType.M2TS)
+            .role(TrackRole.VIDEO)
+            .mimeType("video/mp2t")
+            .m2tsPacketSize(packetSize);
+    }
+
+    /**
      * Builder for constructing MSF tracks.
      */
     public static class Builder {
@@ -279,6 +293,53 @@ public class MsfTrack extends WarpTrack {
 
         public Builder maxObjSapStartingType(int sapType) {
             track.setMaxObjSapStartingType(sapType);
+            return this;
+        }
+
+        // MSFTS (draft-gregoire-moq-msfts) m2ts track fields
+
+        public Builder m2tsPacketSize(int octets) {
+            track.setM2tsPacketSize(octets);
+            return this;
+        }
+
+        public Builder m2tsPacketsPerObject(int packets) {
+            track.setM2tsPacketsPerObject(packets);
+            return this;
+        }
+
+        public Builder m2tsProgramNumber(int programNumber) {
+            track.setM2tsProgramNumber(programNumber);
+            return this;
+        }
+
+        public Builder m2tsPmtPid(int pid) {
+            track.setM2tsPmtPid(pid);
+            return this;
+        }
+
+        public Builder m2tsPcrPid(int pid) {
+            track.setM2tsPcrPid(pid);
+            return this;
+        }
+
+        public Builder m2tsPsiInterval(int milliseconds) {
+            track.setM2tsPsiInterval(milliseconds);
+            return this;
+        }
+
+        public Builder m2tsRandomAccess(boolean randomAccess) {
+            track.setM2tsRandomAccess(randomAccess);
+            return this;
+        }
+
+        public Builder m2tsTimestampMode(String mode) {
+            track.setM2tsTimestampMode(mode);
+            return this;
+        }
+
+        public Builder m2tsScte35Pid(int pid) {
+            track.setM2tsScte35Pid(pid);
             return this;
         }
 

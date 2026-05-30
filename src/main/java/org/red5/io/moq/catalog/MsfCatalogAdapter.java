@@ -75,6 +75,15 @@ public final class MsfCatalogAdapter {
         msfTrack.setDisplayWidth(warpTrack.getDisplayWidth());
         msfTrack.setDisplayHeight(warpTrack.getDisplayHeight());
         msfTrack.setLang(warpTrack.getLang());
+        msfTrack.setM2tsPacketSize(warpTrack.getM2tsPacketSize());
+        msfTrack.setM2tsPacketsPerObject(warpTrack.getM2tsPacketsPerObject());
+        msfTrack.setM2tsProgramNumber(warpTrack.getM2tsProgramNumber());
+        msfTrack.setM2tsPmtPid(warpTrack.getM2tsPmtPid());
+        msfTrack.setM2tsPcrPid(warpTrack.getM2tsPcrPid());
+        msfTrack.setM2tsPsiInterval(warpTrack.getM2tsPsiInterval());
+        msfTrack.setM2tsRandomAccess(warpTrack.getM2tsRandomAccess());
+        msfTrack.setM2tsTimestampMode(warpTrack.getM2tsTimestampMode());
+        msfTrack.setM2tsScte35Pid(warpTrack.getM2tsScte35Pid());
         return msfTrack;
     }
 

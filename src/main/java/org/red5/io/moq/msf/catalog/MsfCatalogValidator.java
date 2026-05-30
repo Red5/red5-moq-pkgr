@@ -116,6 +116,11 @@ public class MsfCatalogValidator {
         if (PackagingType.CMAF.getValue().equals(packaging)) {
             validateCmsfTrack(track);
         }
+
+        // MSFTS Section 6: MPEG-2 Transport Stream track requirements
+        if (PackagingType.M2TS.getValue().equals(packaging)) {
+            validateM2tsTrack(track);
+        }
     }
 
     /**
@@ -161,6 +166,31 @@ public class MsfCatalogValidator {
         Integer maxObjSapStartingType = track.getMaxObjSapStartingType();
         if (maxObjSapStartingType != null && (maxObjSapStartingType < 0 || maxObjSapStartingType > 3)) {
             throw new IllegalArgumentException("maxObjSapStartingType must be between 0 and 3");
+        }
+    }
+
+    /**
+     * MSFTS Section 6: MPEG-2 Transport Stream (m2ts) track catalog requirements.
+     */
+    private static void validateM2tsTrack(WarpTrack track) {
+        // MSFTS 6.2: m2tsPacketSize is required and MUST be 188 or 192.
+        Integer packetSize = track.getM2tsPacketSize();
+        if (packetSize == null) {
+            throw new IllegalArgumentException("m2ts track must declare m2tsPacketSize");
+        }
+        if (packetSize != 188 && packetSize != 192) {
+            throw new IllegalArgumentException("m2tsPacketSize must be 188 or 192");
+        }
+
+        // MSFTS 6.9: m2tsTimestampMode MUST NOT be present when m2tsPacketSize is 188.
+        String timestampMode = track.getM2tsTimestampMode();
+        if (timestampMode != null) {
+            if (packetSize == 188) {
+                throw new IllegalArgumentException("m2tsTimestampMode must not be present when m2tsPacketSize is 188");
+            }
+            if (!"arrival-time".equals(timestampMode) && !"opaque".equals(timestampMode)) {
+                throw new IllegalArgumentException("m2tsTimestampMode must be \"arrival-time\" or \"opaque\"");
+            }
         }
     }
 

@@ -18,7 +18,10 @@ public enum PackagingType {
     MEDIA_TIMELINE("mediatimeline"),
 
     /** Event timeline track (section 8) */
-    EVENT_TIMELINE("eventtimeline");
+    EVENT_TIMELINE("eventtimeline"),
+
+    /** MPEG-2 Transport Stream / M2TS source packets (draft-gregoire-moq-msfts) */
+    M2TS("m2ts");
 
     private final String value;
 

@@ -121,6 +121,15 @@ public final class WarpCatalogAdapter {
         track.setEventType(warpTrack.getEventType());
         track.setMaxGrpSapStartingType(warpTrack.getMaxGrpSapStartingType());
         track.setMaxObjSapStartingType(warpTrack.getMaxObjSapStartingType());
+        track.setM2tsPacketSize(warpTrack.getM2tsPacketSize());
+        track.setM2tsPacketsPerObject(warpTrack.getM2tsPacketsPerObject());
+        track.setM2tsProgramNumber(warpTrack.getM2tsProgramNumber());
+        track.setM2tsPmtPid(warpTrack.getM2tsPmtPid());
+        track.setM2tsPcrPid(warpTrack.getM2tsPcrPid());
+        track.setM2tsPsiInterval(warpTrack.getM2tsPsiInterval());
+        track.setM2tsRandomAccess(warpTrack.getM2tsRandomAccess());
+        track.setM2tsTimestampMode(warpTrack.getM2tsTimestampMode());
+        track.setM2tsScte35Pid(warpTrack.getM2tsScte35Pid());
 
         SelectionParameters selectionParams = buildSelectionParameters(warpTrack);
         if (selectionParams != null) {
@@ -154,6 +163,15 @@ public final class WarpCatalogAdapter {
         warpTrack.setEventType(track.getEventType());
         warpTrack.setMaxGrpSapStartingType(track.getMaxGrpSapStartingType());
         warpTrack.setMaxObjSapStartingType(track.getMaxObjSapStartingType());
+        warpTrack.setM2tsPacketSize(track.getM2tsPacketSize());
+        warpTrack.setM2tsPacketsPerObject(track.getM2tsPacketsPerObject());
+        warpTrack.setM2tsProgramNumber(track.getM2tsProgramNumber());
+        warpTrack.setM2tsPmtPid(track.getM2tsPmtPid());
+        warpTrack.setM2tsPcrPid(track.getM2tsPcrPid());
+        warpTrack.setM2tsPsiInterval(track.getM2tsPsiInterval());
+        warpTrack.setM2tsRandomAccess(track.getM2tsRandomAccess());
+        warpTrack.setM2tsTimestampMode(track.getM2tsTimestampMode());
+        warpTrack.setM2tsScte35Pid(track.getM2tsScte35Pid());
 
         SelectionParameters selectionParams = mergeSelectionParams(commonTrackFields, track);
         if (selectionParams != null) {

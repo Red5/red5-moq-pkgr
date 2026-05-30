@@ -121,20 +121,21 @@ class CatalogTest {
     }
 
     @Test
-    void testValidate_MissingStreamingFormat() {
+    void testValidate_MissingStreamingFormatIsOptional() {
+        // streamingFormat is a legacy Common Catalog Format field; the MSF catalog
+        // model keys off "version" instead, so its absence must not fail validation.
         Catalog catalog = new Catalog();
         catalog.setStreamingFormat(0);
-        catalog.setStreamingFormatVersion("0.2");
+        catalog.setStreamingFormatVersion(null);
         List<CatalogTrack> tracks = new ArrayList<>();
         tracks.add(new CatalogTrack("video", "loc"));
         catalog.setTracks(tracks);
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, catalog::validate);
-        assertTrue(ex.getMessage().contains("streamingFormat is required"));
+        assertDoesNotThrow(catalog::validate);
     }
 
     @Test
-    void testValidate_MissingStreamingFormatVersion() {
+    void testValidate_MissingStreamingFormatVersionIsOptional() {
         Catalog catalog = new Catalog();
         catalog.setStreamingFormat(1);
         catalog.setStreamingFormatVersion(null);
@@ -142,12 +143,12 @@ class CatalogTest {
         tracks.add(new CatalogTrack("video", "loc"));
         catalog.setTracks(tracks);
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, catalog::validate);
-        assertTrue(ex.getMessage().contains("streamingFormatVersion is required"));
+        assertDoesNotThrow(catalog::validate);
     }
 
     @Test
     void testValidate_EmptyStreamingFormatVersion() {
+        // When present, streamingFormatVersion must still be non-empty.
         Catalog catalog = new Catalog();
         catalog.setStreamingFormat(1);
         catalog.setStreamingFormatVersion("");
@@ -156,7 +157,7 @@ class CatalogTest {
         catalog.setTracks(tracks);
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, catalog::validate);
-        assertTrue(ex.getMessage().contains("streamingFormatVersion is required"));
+        assertTrue(ex.getMessage().contains("streamingFormatVersion must not be empty"));
     }
 
     @Test

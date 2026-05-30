@@ -69,6 +69,33 @@ public class WarpTrack {
 
     private Integer maxObjSapStartingType;
 
+    /** MSFTS 6.2: source-packet size in octets, MUST be 188 or 192. */
+    private Integer m2tsPacketSize;
+
+    /** MSFTS 6.3: usual number of source packets per media Object (advisory). */
+    private Integer m2tsPacketsPerObject;
+
+    /** MSFTS 6.4: MPEG-2 program number carried by this track. */
+    private Integer m2tsProgramNumber;
+
+    /** MSFTS 6.5: PID carrying the Program Map Table for the program (advisory). */
+    private Integer m2tsPmtPid;
+
+    /** MSFTS 6.6: PID carrying the Program Clock Reference for the program (advisory). */
+    private Integer m2tsPcrPid;
+
+    /** MSFTS 6.7: maximum PAT/PMT repetition interval in milliseconds. */
+    private Integer m2tsPsiInterval;
+
+    /** MSFTS 6.8: when true, the first Object in every Group begins at a random access point. */
+    private Boolean m2tsRandomAccess;
+
+    /** MSFTS 6.9: interpretation of the 4-octet timestamp prefix ("arrival-time" or "opaque"). */
+    private String m2tsTimestampMode;
+
+    /** MSFTS 6.10: PID carrying SCTE-35 splice_info_section() messages (advisory). */
+    private Integer m2tsScte35Pid;
+
     public String getNamespace() {
         return namespace;
     }
@@ -315,5 +342,77 @@ public class WarpTrack {
 
     public void setMaxObjSapStartingType(Integer maxObjSapStartingType) {
         this.maxObjSapStartingType = maxObjSapStartingType;
+    }
+
+    public Integer getM2tsPacketSize() {
+        return m2tsPacketSize;
+    }
+
+    public void setM2tsPacketSize(Integer m2tsPacketSize) {
+        this.m2tsPacketSize = m2tsPacketSize;
+    }
+
+    public Integer getM2tsPacketsPerObject() {
+        return m2tsPacketsPerObject;
+    }
+
+    public void setM2tsPacketsPerObject(Integer m2tsPacketsPerObject) {
+        this.m2tsPacketsPerObject = m2tsPacketsPerObject;
+    }
+
+    public Integer getM2tsProgramNumber() {
+        return m2tsProgramNumber;
+    }
+
+    public void setM2tsProgramNumber(Integer m2tsProgramNumber) {
+        this.m2tsProgramNumber = m2tsProgramNumber;
+    }
+
+    public Integer getM2tsPmtPid() {
+        return m2tsPmtPid;
+    }
+
+    public void setM2tsPmtPid(Integer m2tsPmtPid) {
+        this.m2tsPmtPid = m2tsPmtPid;
+    }
+
+    public Integer getM2tsPcrPid() {
+        return m2tsPcrPid;
+    }
+
+    public void setM2tsPcrPid(Integer m2tsPcrPid) {
+        this.m2tsPcrPid = m2tsPcrPid;
+    }
+
+    public Integer getM2tsPsiInterval() {
+        return m2tsPsiInterval;
+    }
+
+    public void setM2tsPsiInterval(Integer m2tsPsiInterval) {
+        this.m2tsPsiInterval = m2tsPsiInterval;
+    }
+
+    public Boolean getM2tsRandomAccess() {
+        return m2tsRandomAccess;
+    }
+
+    public void setM2tsRandomAccess(Boolean m2tsRandomAccess) {
+        this.m2tsRandomAccess = m2tsRandomAccess;
+    }
+
+    public String getM2tsTimestampMode() {
+        return m2tsTimestampMode;
+    }
+
+    public void setM2tsTimestampMode(String m2tsTimestampMode) {
+        this.m2tsTimestampMode = m2tsTimestampMode;
+    }
+
+    public Integer getM2tsScte35Pid() {
+        return m2tsScte35Pid;
+    }
+
+    public void setM2tsScte35Pid(Integer m2tsScte35Pid) {
+        this.m2tsScte35Pid = m2tsScte35Pid;
     }
 }

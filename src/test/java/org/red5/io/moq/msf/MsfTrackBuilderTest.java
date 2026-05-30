@@ -56,6 +56,33 @@ class MsfTrackBuilderTest {
     }
 
     @Test
+    void testM2tsFactoryMethod() {
+        MsfTrack track = MsfTrack.m2ts("program-1-ts", 188)
+            .live()
+            .m2tsProgramNumber(1)
+            .m2tsPmtPid(256)
+            .m2tsPcrPid(257)
+            .m2tsPsiInterval(100)
+            .m2tsPacketsPerObject(64)
+            .m2tsRandomAccess(true)
+            .m2tsScte35Pid(500)
+            .build();
+
+        assertEquals("program-1-ts", track.getName());
+        assertEquals(PackagingType.M2TS.getValue(), track.getPackaging());
+        assertEquals(TrackRole.VIDEO.getValue(), track.getRole());
+        assertEquals("video/mp2t", track.getMimeType());
+        assertEquals(188, track.getM2tsPacketSize());
+        assertEquals(1, track.getM2tsProgramNumber());
+        assertEquals(256, track.getM2tsPmtPid());
+        assertEquals(257, track.getM2tsPcrPid());
+        assertEquals(100, track.getM2tsPsiInterval());
+        assertEquals(64, track.getM2tsPacketsPerObject());
+        assertTrue(track.getM2tsRandomAccess());
+        assertEquals(500, track.getM2tsScte35Pid());
+    }
+
+    @Test
     void testCaptionFactoryMethod() {
         MsfTrack track = MsfTrack.caption("cc").build();
 

@@ -288,6 +288,77 @@ class MsfSerializerTest {
         assertEquals("com.example/scores/v1", eventTrack.getEventType());
     }
 
+    // MSFTS (draft-gregoire-moq-msfts) m2ts serialization
+
+    @Test
+    void testDeserializeM2tsCatalogExample() throws Exception {
+        // draft-gregoire-moq-msfts section 7.1: Live 188-octet Transport Stream.
+        // Note this catalog has no streamingFormat field - only "version".
+        String json = """
+            {
+              "version": 1,
+              "generatedAt": 1746104606044,
+              "tracks": [
+                {
+                  "name": "program-1-ts",
+                  "namespace": "live.example.com/channel/1",
+                  "packaging": "m2ts",
+                  "isLive": true,
+                  "targetLatency": 1000,
+                  "role": "video",
+                  "mimeType": "video/mp2t",
+                  "bitrate": 6000000,
+                  "m2tsPacketSize": 188,
+                  "m2tsPacketsPerObject": 64,
+                  "m2tsProgramNumber": 1,
+                  "m2tsPmtPid": 256,
+                  "m2tsPcrPid": 257,
+                  "m2tsPsiInterval": 100,
+                  "m2tsRandomAccess": true
+                }
+              ]
+            }
+            """;
+
+        MsfCatalog catalog = serializer.fromJsonValidated(json);
+        WarpTrack track = catalog.getTracks().get(0);
+
+        assertEquals("m2ts", track.getPackaging());
+        assertEquals(188, track.getM2tsPacketSize());
+        assertEquals(64, track.getM2tsPacketsPerObject());
+        assertEquals(1, track.getM2tsProgramNumber());
+        assertEquals(256, track.getM2tsPmtPid());
+        assertEquals(257, track.getM2tsPcrPid());
+        assertEquals(100, track.getM2tsPsiInterval());
+        assertTrue(track.getM2tsRandomAccess());
+    }
+
+    @Test
+    void testRoundTripM2tsTrackFromBuilder() throws Exception {
+        // draft-gregoire-moq-msfts section 7.2: Live 192-octet M2TS source packets.
+        MsfCatalog catalog = MsfCatalog.builder()
+            .addTrack(MsfTrack.m2ts("program-1-m2ts", 192)
+                .namespace("contribution.example.net/feed/a")
+                .live()
+                .targetLatency(500)
+                .bitrate(12000000)
+                .m2tsPacketsPerObject(32)
+                .m2tsProgramNumber(1)
+                .m2tsTimestampMode("arrival-time")
+                .m2tsRandomAccess(true))
+            .build();
+
+        String json = serializer.toJson(catalog);
+        MsfCatalog parsed = serializer.fromJsonValidated(json);
+
+        WarpTrack track = parsed.getTracks().get(0);
+        assertEquals("m2ts", track.getPackaging());
+        assertEquals(192, track.getM2tsPacketSize());
+        assertEquals("arrival-time", track.getM2tsTimestampMode());
+        assertEquals(32, track.getM2tsPacketsPerObject());
+        assertTrue(track.getM2tsRandomAccess());
+    }
+
     // VOD catalog serialization
 
     @Test

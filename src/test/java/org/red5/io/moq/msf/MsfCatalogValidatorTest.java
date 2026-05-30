@@ -78,7 +78,124 @@ class MsfCatalogValidatorTest {
         assertEquals(PackagingType.LOC, PackagingType.fromValue("loc"));
         assertEquals(PackagingType.CMAF, PackagingType.fromValue("cmaf"));
         assertEquals(PackagingType.MEDIA_TIMELINE, PackagingType.fromValue("mediatimeline"));
+        assertEquals(PackagingType.M2TS, PackagingType.fromValue("m2ts"));
         assertNull(PackagingType.fromValue(null));
+    }
+
+    @Test
+    void testM2tsPackagingTypeIsValid() {
+        assertEquals("m2ts", PackagingType.M2TS.getValue());
+        assertTrue(PackagingType.isValid("m2ts"));
+        assertTrue(PackagingType.allValues().contains("m2ts"));
+    }
+
+    // MSFTS (draft-gregoire-moq-msfts) m2ts track tests
+
+    private static WarpCatalog m2tsCatalog(WarpTrack track) {
+        WarpCatalog catalog = new WarpCatalog();
+        catalog.setVersion(1);
+        catalog.setTracks(List.of(track));
+        return catalog;
+    }
+
+    @Test
+    void testValidM2tsTrack188() {
+        WarpTrack track = new WarpTrack();
+        track.setName("program-1-ts");
+        track.setPackaging("m2ts");
+        track.setIsLive(true);
+        track.setM2tsPacketSize(188);
+        track.setM2tsProgramNumber(1);
+        track.setM2tsRandomAccess(true);
+
+        assertDoesNotThrow(() -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
+    }
+
+    @Test
+    void testValidM2tsTrack192WithTimestampMode() {
+        WarpTrack track = new WarpTrack();
+        track.setName("program-1-m2ts");
+        track.setPackaging("m2ts");
+        track.setIsLive(true);
+        track.setM2tsPacketSize(192);
+        track.setM2tsTimestampMode("arrival-time");
+
+        assertDoesNotThrow(() -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
+    }
+
+    @Test
+    void testM2tsTrackRequiresPacketSize() {
+        WarpTrack track = new WarpTrack();
+        track.setName("program-1-ts");
+        track.setPackaging("m2ts");
+        track.setIsLive(true);
+        // Missing m2tsPacketSize
+
+        assertThrows(IllegalArgumentException.class,
+            () -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
+    }
+
+    @Test
+    void testM2tsTrackRejectsInvalidPacketSize() {
+        WarpTrack track = new WarpTrack();
+        track.setName("program-1-ts");
+        track.setPackaging("m2ts");
+        track.setIsLive(true);
+        track.setM2tsPacketSize(204); // not 188 or 192
+
+        assertThrows(IllegalArgumentException.class,
+            () -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
+    }
+
+    @Test
+    void testM2tsTimestampModeNotAllowedFor188() {
+        WarpTrack track = new WarpTrack();
+        track.setName("program-1-ts");
+        track.setPackaging("m2ts");
+        track.setIsLive(true);
+        track.setM2tsPacketSize(188);
+        track.setM2tsTimestampMode("arrival-time"); // invalid for 188-octet packets
+
+        assertThrows(IllegalArgumentException.class,
+            () -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
+    }
+
+    @Test
+    void testNonM2tsTrackNotForcedToCarryM2tsFields() {
+        // A loc track (MSFTS extension not in use) must validate without any m2ts fields.
+        WarpTrack track = new WarpTrack();
+        track.setName("video");
+        track.setPackaging("loc");
+        track.setIsLive(true);
+
+        assertDoesNotThrow(() -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
+    }
+
+    @Test
+    void testM2tsFieldsIgnoredOnNonM2tsTrack() {
+        // m2ts fields carried on a non-m2ts track are meaningless and must not be
+        // validated/enforced - even values that would be illegal for an m2ts track.
+        WarpTrack track = new WarpTrack();
+        track.setName("video");
+        track.setPackaging("loc");
+        track.setIsLive(true);
+        track.setM2tsPacketSize(999);             // invalid for m2ts, but irrelevant here
+        track.setM2tsTimestampMode("nonsense");   // would be rejected on an m2ts track
+
+        assertDoesNotThrow(() -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
+    }
+
+    @Test
+    void testM2tsRejectsUnknownTimestampMode() {
+        WarpTrack track = new WarpTrack();
+        track.setName("program-1-m2ts");
+        track.setPackaging("m2ts");
+        track.setIsLive(true);
+        track.setM2tsPacketSize(192);
+        track.setM2tsTimestampMode("bogus");
+
+        assertThrows(IllegalArgumentException.class,
+            () -> MsfCatalogValidator.validateCatalog(m2tsCatalog(track)));
     }
 
     // MsfCatalogValidator tests

@@ -197,12 +197,12 @@ public class Catalog {
             throw new IllegalStateException("Unsupported catalog version: " + version);
         }
 
-        if (streamingFormat == 0) {
-            throw new IllegalStateException("streamingFormat is required");
-        }
-
-        if (streamingFormatVersion == null || streamingFormatVersion.isEmpty()) {
-            throw new IllegalStateException("streamingFormatVersion is required");
+        // streamingFormat and streamingFormatVersion were required by the older Common
+        // Catalog Format (draft-ietf-moq-catalogformat). The current MSF/CMSF catalog
+        // model (draft-ietf-moq-msf) keys off "version" instead and does not define
+        // these fields, so they are optional here: validated only if present.
+        if (streamingFormatVersion != null && streamingFormatVersion.isEmpty()) {
+            throw new IllegalStateException("streamingFormatVersion must not be empty when present");
         }
 
         boolean hasTracks = tracks != null && !tracks.isEmpty();
